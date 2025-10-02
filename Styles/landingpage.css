@@ -1,0 +1,353 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+@import url('https://fonts.cdnfonts.com/css/hero-new');
+@font-face {
+    font-family: 'reborn'; /* Choose a name for your font family */
+    src: url('../fonts/reborn/Reborn.otf') format('opentype'); /* Adjust the path as needed */
+    font-weight: normal; /* Or specify a weight if the font has multiple */
+    font-style: normal; /* Or specify a style if the font has multiple */
+}
+
+
+:root {
+    --primary: #423f3e;
+    --secondary: #f0ebe5;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #cdcfc1;
+    margin: 0;
+    padding: 0 1rem;
+}
+
+.main-image{
+    width: 98%;
+    height: auto;
+    max-height: 600px;
+    object-fit: cover;
+    margin: 0 1rem;
+}
+
+.main-content {
+    position: relative;
+    width: 100%;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.content-overlay {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 40%;
+    background-color: #f1ebe5;
+    padding: 2rem;
+    margin-right: 2rem;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+}
+
+.content-overlay h1 {
+    font-family: "reborn";
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    color: var(--primary);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.content-overlay p {
+    font-family: "Cormorant Garamond", serif;
+    font-size: clamp(16px, 2vw, 21px);
+    line-height: 1.6;
+    color: var(--primary);
+    text-align: justify;
+    max-width: 100%;
+}
+
+/* Services Section Styles */
+.services-section {
+    width: 100%;
+    padding: 2rem 1rem;
+    margin-bottom: 2rem;
+}
+
+.services-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.section-title {
+    font-family: "reborn";
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--primary);
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-top: 10px;
+}
+
+.services-container {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.service-card {
+    background-color: #f1ebe5;
+    padding: 2rem;
+    width: calc(50% - 1rem);
+    min-width: 355px;
+    transition: transform 0.3s ease;
+}
+
+.service-title {
+    font-family: "reborn";
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    color: var(--primary);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.service-description {
+    font-family: "Cormorant Garamond", serif;
+    font-size: clamp(16px, 2vw, 18px);
+    line-height: 1.6;
+    color: var(--primary);
+    text-align: justify;
+}
+
+/* About Section Styles */
+.about-section {
+    width: 100%;
+    padding: 2rem 1rem;
+    margin-bottom: 2rem;
+}
+
+.about-content {
+    max-width: 1200px;
+    background-color: #f1ebe5;
+    margin: 0 auto;
+    padding-bottom: 5%;
+}
+
+.about-container {
+    display: flex;
+    gap: 11rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.about-card {
+    background-color: #d8cfc5;
+    padding: 2rem;
+    width: calc(40% - 1rem);
+    min-width: 300px;
+    transition: transform 0.3s ease;
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    overflow: hidden;
+    padding-top: 6rem;
+}
+
+.about-card img {
+    position: absolute;
+    width: 90%;
+    height: 90%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    margin-left: 5%;
+    margin-right: 5%;
+    margin-top: 5%;
+}
+
+.about-title {
+    font-family: "reborn";
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    color: var(--primary);
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+    bottom: 50%;
+}
+
+.about-description {
+    font-family: "Cormorant Garamond", serif;
+    font-size: clamp(16px, 2vw, 18px);
+    line-height: 1.6;
+    color: var(--primary);
+    position: relative;
+    z-index: 1;
+    white-space: pre-line;
+}
+
+.footer {
+    color: var(--primary);
+    text-align: center;
+    padding: 1rem 0;
+    font-family: "Cormorant Garamond", serif;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+@media screen and (max-width: 840px) {
+    .about-container {
+        gap: 3rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .about-container {
+        flex-direction: column;
+        gap: 3rem;
+    }
+
+    .about-card {
+
+        width: 75%;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .about-card {
+        padding: 1.5rem;
+        min-height: 180px;
+    }
+
+    .about-title {
+        font-size: 1.5rem;
+    }
+
+    .about-description {
+        font-size: 16px;
+    }
+}
+
+@media screen and (max-width: 1250px) {
+    .content-overlay {
+        height: 80%;
+    }
+    .content-overlay h1 {
+        font-size: 28px;
+    }
+    .content-overlay p {
+        font-size: 18px;
+    }
+
+}
+@media screen and (max-width: 1100px) {
+    .content-overlay h1 {
+        font-size: 26px;
+    }
+    .content-overlay p {
+        font-size: 16px;
+    }
+}
+@media (max-width: 1024px) {
+    .content-overlay {
+        width: 50%;
+        padding: 1.5rem;
+        height: 70%;
+    }
+    .content-overlay h1 {
+        font-size: 26px;
+    }
+    .content-overlay p {
+        font-size: 14px;
+    }
+}
+@media screen and (max-width: 950px) {
+    .content-overlay h1 {
+        font-size: 26px;
+    }
+    .content-overlay p {
+        font-size: 12px;
+    }
+
+}
+@media (max-width: 900px) {
+    .content-overlay {
+        width: 60%;
+        padding: 1.5rem;
+        height: 60%;
+        margin-right: 1rem;
+    }
+    .content-overlay h1 {
+        font-size: 24px;
+    }
+    .content-overlay p {
+        font-size: 11px;
+    }
+}
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .main-image {
+        width: 100%;
+        margin: 0;
+        max-height: 400px;
+    }
+
+    .content-overlay {
+        position: static;
+        width: 90%;
+        transform: none;
+        margin: 1rem auto;
+        height: auto;
+    }
+
+    .content-overlay h1 {
+        font-size: 24px;
+    }
+
+    .content-overlay p {
+        font-size: 18px;
+    }
+
+}
+
+@media (max-width: 480px) {
+    .main-image {
+        max-height: 300px;
+    }
+
+    .content-overlay {
+        width: 95%;
+        padding: 1rem;
+    }
+    .content-overlay h1 {
+        font-size: 20px;
+    }
+    .content-overlay p {
+        font-size: 16px;
+    }
+}
+
+.footer {
+    color: var(--primary);
+    text-align: center;
+    padding: 1rem 0;
+    font-family: "Cormorant Garamond", serif;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}

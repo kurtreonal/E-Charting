@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+
+body {
+    background-color: #cdcfc1;
+    margin: 0;
+    padding: 0 1rem;
+}
+
+.wrapper {
+    background-color: #f1ebe5;
+    width: 98%;
+    margin: 1rem auto;
+    padding: 2rem;
+}
+
+.container {
+    width: 100%;
+    padding: 0 1rem;
+}
+
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+h1 {
+    font-family: "Cormorant Garamond", serif;
+    color: var(--primary);
+    margin: 0;
+}
+
+.btn-add-patient {
+    margin: 0;
+}
+
+.btn-add-patient button {
+    font-family: "Cormorant Garamond", serif;
+    padding: 2px 1rem;
+    background-color: var(--secondary);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 22px;
+}
+
+.btn-add-patient button:hover {
+    background-color: var(--primary);
+    color: var(--secondary);
+}
+
+.patient-list-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 5px;
+}
+
+.patient-list-table tr {
+    font-family: "Cormorant Garamond", serif;
+    font-style: italic;
+    font-size: 20px;
+}
+
+.patient-list-table td {
+    padding: 8px;
+    border: 1px solid var(--primary);
+}
+
+.patient-list-table td:first-child {
+    text-align: left;
+    border-right: none;
+}
+
+.patient-list-table td:last-child {
+    text-align: right;
+    border-left: none;
+}
+
+.patient-list-table a {
+    text-decoration: none;
+    color: var(--primary);
+    transition: color 0.3s ease;
+}
+
+.patient-list-table a:hover {
+    color: #666;
+}
