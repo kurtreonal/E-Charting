@@ -76,34 +76,66 @@ body {
 
 .nav-item:hover .notification-icon {
     content: url('../Assets/notification-white.svg');
+    background-color: var(--primary);
+    border-radius: 50%;
+    padding: 2px;
+    border: 1px solid var(--primary);
+    transform: translate(-2px, -2px);
+    width: 35px;
+    height: 35px;
 }
 
 .nav-links {
     display: flex;
-    gap: 1rem;
+    gap: 1.5rem;
     align-items: center;
+    position: relative;
 }
 
 .nav-item {
     color: var(--primary);
     text-decoration: none;
-    font-family: "Cormorant Garamond", serif;
-    font-size: 22px;
-    font-weight: bold;
-    padding: 0.5rem 1rem;
-    border-right: 2px solid var(--primary);
+    font-family: "Hero New", sans-serif;
+    padding: 3px 10px;
     transition: all 0.3s ease;
+    position: relative;
+    border: 1px solid var(--primary);
+    text-align: center;
+    width: 110px;
+    font-weight: 500;
+}
+
+/* Update separator to only show after Patient nav-item */
+.nav-item:not(:last-child)::after {
+    display: none; /* Hide all separators by default */
+}
+
+/* Only show separator for Patient nav-item */
+.nav-item:first-child::after {
+    content: '';
+    display: block;
+    position: absolute;
+    right: -0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 50px;
+    width: 2px;
+    background-color: var(--primary);
 }
 
 .nav-item:last-child {
-    border-right: none;
+    border: none;
+    padding: 0.5rem;
+    width: 48px;
+    height: 48px;
 }
 
-.nav-item:hover {
+.nav-item:not(:last-child):hover {
     background-color: var(--primary);
     color: var(--secondary);
-    box-shadow: 4px 4px 0px #000000;
     transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0px #000000;
+    border: 1px solid var(--primary);
 }
 
 .hamburger {
@@ -121,7 +153,21 @@ body {
     background-color: var(--primary);
 }
 
-@media (max-width: 768px) {
+@media all and (max-width: 980px) {
+    .page-title {
+        font-size: 20px;
+    }
+
+        .nav-logo {
+        width: 40%;
+    }
+
+    .left-section {
+        gap: 0;
+    }
+}
+
+@media all and (max-width: 900px) {
     .hamburger {
         display: block;
     }
@@ -163,28 +209,24 @@ body {
     }
 
     .nav-item {
-        margin: 16px 0;
-        border-right: none;
-        border-bottom: 2px solid var(--primary);
-        opacity: 0;
-        transform: translateX(50px);
-        transition: all 0.3s ease;
+        width: 60%;
+        margin: 0.5rem 0;
+        border: 1px solid var(--primary);
     }
 
-    .nav-links.active .nav-item {
-        opacity: 1;
-        transform: translateX(0);
+    .nav-item:first-child::after {
+        display: none;
     }
+}
 
-    .left-section {
-        gap: 0.5rem;
-    }
-
-    .nav-logo {
-        height: 60px;
-    }
-
+@media all and (max-width: 600px) {
     .page-title {
-        font-size: 20px;
+        font-size: 18px;
+    }
+}
+
+@media all and (max-width: 480px) {
+    .page-title {
+        display: none;
     }
 }

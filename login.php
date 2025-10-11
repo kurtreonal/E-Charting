@@ -36,9 +36,9 @@
                 </div>
 
                 <div class="divider"></div>
-
-                <button type="submit">SIGN IN</button>
-
+                <a href="./landingpage.php">
+                    <button type="submit">SIGN IN</button>
+                </a>
                 <div class="divider-hide"></div>
 
                 <div class="social-login">
@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="footer">
-                    Don't have an account? <a href="./landingpage.php">Sign up</a>
+                    Don't have an account? <a href="">Sign up</a>
                 </div>
             </div>
         </div>

@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+@import url('https://fonts.cdnfonts.com/css/hero-new');
+@font-face {
+    font-family: 'reborn'; /* Choose a name for your font family */
+    src: url('../fonts/reborn/Reborn.otf') format('opentype'); /* Adjust the path as needed */
+    font-weight: normal; /* Or specify a weight if the font has multiple */
+    font-style: normal; /* Or specify a style if the font has multiple */
+}
+
+
+:root {
+    --primary: #423f3e;
+    --secondary: #f0ebe5;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-image: url("../Assets/bg1.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position-x: 15%;
+    background-color: #becedf;
+    background-attachment: fixed;
+}
+
+.wrapper {
+    background-color: var(--secondary);
+    width: 98%;
+    margin: 1rem auto;
+    padding: 1rem 2rem 1rem 2rem;
+    display: flex;
+}
+
+.container {
+    width: 100%;
+}
+
+.header-section {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.header-section h3 {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+}
+
+.add-patient-form {
+    display: flex;
+    gap: 3rem;
+    font-size: 17px;
+}
+
+.main-form-section {
+    margin-right: 10rem;
+}
+
+.side-form-section {
+    flex: 1;
+    padding-top: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.main-form-section .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.side-form-section .form-group {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.side-form-section label {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+}
+
+.side-form-section .radio-options {
+    display: flex;
+    justify-content: flex-start;
+    gap: 1.5rem;
+    width: 150px; /* Fixed width for radio options container */
+}
+
+.side-form-section .radio-options input[type="radio"] {
+    margin-right: 0.5rem;
+}
+
+.side-form-section .radio-options label {
+    white-space: nowrap; /* Prevent label text from wrapping */
+}
+
+.form-group input[type="text"] {
+    border: none;
+    border-bottom: 2px solid var(--primary);
+    background: transparent;
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+}
+
+.radio-group {
+    flex-direction: row;
+    display: flex;
+    gap: 2rem;
+
+}
+
+.form-group:nth-child(3),
+.form-group:nth-child(4) {
+    grid-column: 1 / -1;
+}
+
+.form-group:nth-child(3) .radio-group,
+.form-group:nth-child(4) .radio-group {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 1rem;
+    justify-content: start;
+}
+
+.radio-group > div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Left side form groups */
+.form-group:nth-child(n+5) {
+    grid-column: 1 / 2;
+    flex-direction: row;
+    align-items: center;
+    gap: 2rem;
+}
+
+.form-group label {
+    color: var(--primary);
+    font-weight: bold;
+}
+
+/* Radio button styling */
+.form-group input[type="radio"] {
+    margin-right: 0.5rem;
+}
+
+.form-group input[type="radio"] + label {
+    font-weight: normal;
+}
+
+.datetime-wrapper {
+    display: flex;
+    gap: 1rem;
+}
+
+.datetime-wrapper .form-group {
+    flex-direction: row;
+}
+
+.datetime-wrapper input[type="text"] {
+    width: 15rem;
+    border: none;
+    border-bottom: 2px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+}
+
+.datetime-wrapper label {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+}

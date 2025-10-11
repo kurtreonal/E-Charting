@@ -13,67 +13,79 @@
     <div class="wrapper">
         <div class="container">
             <div class="header-section">
-                <h1>Patient List</h1>
+                <h1>PATIENT</h1>
                 <div class="btn-add-patient">
-                    <button>Add Patient</button>
+                    <button>Add Patient+</button>
                 </div>
             </div>
             <div>
                 <!--Patient List Table-->
                 <table class="patient-list-table">
                     <tbody>
-                        <tr> <!--no border betweenn tables row and column-->
-                            <td>Tohsaka</td> <!--at the far left of the container-->
+                        <tr>
+                            <td>Kurt Isaiah Pascua</td>
                             <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
+                                <a href="" class="">Edit</a>
                             </td>
                         </tr>
                         <tr>
-                            <td>Test Name</td> <!--at the far left of the container-->
+                            <td>Kristian Kyle Elle Madridejo</td>
                             <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
-                            </td>
-                        </tr>
-                                                <tr>
-                            <td>Test Name</td> <!--at the far left of the container-->
-                            <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
-                            </td>
-                        </tr>
-                                                <tr> <!--no border betweenn tables row and column-->
-                            <td>Tohsaka</td> <!--at the far left of the container-->
-                            <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
+                                <a href="" class="">Edit</a>
                             </td>
                         </tr>
                         <tr>
-                            <td>Test Name</td> <!--at the far left of the container-->
+                            <td>Ever Mae Manansala</td>
                             <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
-                            </td>
-                        </tr>
-                                                <tr>
-                            <td>Test Name</td> <!--at the far left of the container-->
-                            <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
-                            </td>
-                        </tr>
-                                                <tr> <!--no border betweenn tables row and column-->
-                            <td>Tohsaka</td> <!--at the far left of the container-->
-                            <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
+                                <a href="" class="">Edit</a>
                             </td>
                         </tr>
                         <tr>
-                            <td>Test Name</td> <!--at the far left of the container-->
+                            <td>Dianne Nataya</td>
                             <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
+                                <a href="" class="">Edit</a>
                             </td>
                         </tr>
-                                                <tr>
-                            <td>Test Name</td> <!--at the far left of the container-->
+                        <tr>
+                            <td>Rhalp Louis Mañibo </td>
                             <td>
-                                <a href="" class="">Edit</a> <!--at the far right of the container-->
+                                <a href="" class="">Edit</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>
+                                <a href="" class="">Edit</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>
+                                <a href="" class="">Edit</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>
+                                <a href="" class="">Edit</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>
+                                <a href="" class="">Edit</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>
+                                <a href="" class="">Edit</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>
+                                <a href="" class="">Edit</a>
                             </td>
                         </tr>
                     </tbody>

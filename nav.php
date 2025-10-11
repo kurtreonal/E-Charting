@@ -8,7 +8,7 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="./patient-profile.php">
+        <a href="">
             <div class="nav-logo">
                 <img src="./Assets/logo.svg" alt="Hospital Logo" class="logo">
             </div>
@@ -23,7 +23,7 @@
             <a href="#" class="nav-item">Services</a>
             <a href="#" class="nav-item">About Us</a>
             <a href="#" class="nav-item">Contact Us</a>
-            <a href="#" class="nav-item">Profile</a>
+            <a href="./patient-profile.php" class="nav-item">Profile</a>
         </div>
     </nav>
     <script>

@@ -20,9 +20,12 @@
 }
 
 body {
-    background-color: #cdcfc1;
-    margin: 0;
-    padding: 0 1rem;
+    background-image: url("../Assets/bg1.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position-x: 15%;
+    background-color: #becedf;
+    background-attachment: fixed;
 }
 
 .wrapper {
@@ -31,6 +34,7 @@ body {
     margin: 1rem auto;
     padding: 2rem;
     display: flex;
+    font-style: italic;
 }
 
 .container {
@@ -43,16 +47,11 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-}
-
-.profile-header {
-    padding: 5px;
-    border: 2px solid var(--primary);
-    height: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 12rem;
+    background-color: var(--secondary);
+    padding: 1rem;
+    border: 1px solid var(--primary);
+    width: 100%;
+    max-width: 15%;
 }
 
 .avatar {
@@ -63,12 +62,9 @@ body {
 }
 
 .profile-details {
-    background-color: white;
-    padding: 1rem;
-    border: 2px solid var(--primary);
     word-wrap: break-word;
     overflow-wrap: break-word;
-    height: 23rem;
+    min-height: 500px;
 }
 
 .profile-details p {
@@ -76,7 +72,7 @@ body {
     margin-bottom: 0.5rem;
     color: var(--primary);
     white-space: pre-wrap;
-    line-height: 1.4;
+    line-height: 2.4;
 }
 
 .profile-details strong {
@@ -85,46 +81,130 @@ body {
 }
 
 .content {
-    width: 80%;
-    background-color: white;
-    border: 2px solid var(--primary);
-    min-height: 500px;
+    width: 100%;
+    background-color: var(--secondary);
+    border: 1px solid var(--primary);
+    padding: 1rem;
+    display: flex;
+    gap: 2rem;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .wrapper {
-        flex-direction: column;
-        align-items: center;
-    }
+.content-section {
+    margin-top: 3rem;
+}
 
+.content-section2 {
+    margin-top: 5rem;
+}
+
+.content-title {
+    font-family: "cormorant garamond", serif;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.upload-box {
+    border: 1px solid var(--primary);
+    padding: 7rem;
+    text-align: center;
+    background-color: var(--secondary);
+    min-height: 416px;
+}
+
+.prescription-box {
+    border: 1px solid var(--primary);
+    padding: 8rem 12rem 8rem 8rem;
+    background-color: var(--secondary);
+    height: 24rem;
+}
+
+.prescription-box h3 {
+    font-family: "Hero New", sans-serif;
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+/* Tablet Responsive Design */
+@media (max-width: 1024px) {
     .container {
         flex-direction: column;
-        align-items: center;
-        width: 100%;
     }
 
     .profile-card {
-        width: 100%;
-        max-width: none;
-        align-items: center;
+        max-width: 100%;
+        flex-direction: row;
+        align-items: flex-start;
     }
 
-    .profile-header {
-        width: 100%;
-        height: auto;
-        max-width: 300px;
+    .avatar {
+        width: 200px;
+        height: 200px;
     }
 
     .profile-details {
-        width: 100%;
-        max-width: 300px;
-        height: auto;
-        min-height: 200px;
+        min-height: auto;
+        flex: 1;
     }
 
     .content {
-        width: 100%;
+        flex-direction: column;
+    }
+
+    .content-section,
+    .content-section2 {
         margin-top: 2rem;
+    }
+
+    .upload-box,
+    .prescription-box {
+        padding: 4rem;
+        min-height: 300px;
+    }
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+    .wrapper {
+        padding: 1rem;
+    }
+
+    .container {
+        gap: 1rem;
+    }
+
+    .profile-card {
+        flex-direction: column;
+        padding: 0.5rem;
+    }
+
+    .avatar {
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+    }
+
+    .profile-details p {
+        line-height: 1.8;
+    }
+
+    .content {
+        padding: 0.5rem;
+        gap: 1rem;
+    }
+
+    .content-section,
+    .content-section2 {
+        margin-top: 1rem;
+    }
+
+    .upload-box,
+    .prescription-box {
+        padding: 2rem;
+        min-height: 200px;
+    }
+
+    .content-title {
+        font-size: 1.2rem;
     }
 }

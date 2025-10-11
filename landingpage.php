@@ -63,7 +63,6 @@
                 </div>
                 <div class="about-card">
                     <h3 class="about-title">C0NTACTS</h3>
-                    <img src="./Assets/heart-detector.svg" alt="heart detector">
                     <p class="about-description">
                         Phone: 0939-123-4567
                         Email: micahospital@gmail.com

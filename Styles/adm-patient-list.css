@@ -1,9 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
 
 body {
-    background-color: #cdcfc1;
-    margin: 0;
-    padding: 0 1rem;
+    background-image: url("../Assets/bg1.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position-x: 15%;
+    background-color: #becedf;
+    background-attachment: fixed;
 }
 
 .wrapper {
@@ -81,9 +84,31 @@ h1 {
 .patient-list-table a {
     text-decoration: none;
     color: var(--primary);
+    padding: 2px 1rem;
     transition: color 0.3s ease;
 }
 
 .patient-list-table a:hover {
-    color: #666;
+    background-color: var(--primary);
+    color: var(--secondary);
+}
+
+@media all and (max-width: 768px) {
+
+    .btn-add-patient button {
+        font-size: 18px;
+        padding: 2px 0.5rem;
+    }
+
+    .patient-list-table tr {
+        font-size: 18px;
+    }
+
+    .patient-list-table td {
+        padding: 6px;
+    }
+
+    .patient-list-table a {
+        padding: 2px 0.5rem;
+    }
 }

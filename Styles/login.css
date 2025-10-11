@@ -6,12 +6,12 @@ body {
     background-size: cover;
     background-repeat: no-repeat;
     background-position-x: 15%;
-    background-color: #cdcfc1;
+    background-color: #becedf;
 }
 
 :root {
     --primary: #423f3e;
-    --secondary: #f0ebe5;
+    --secondary: #dffbff;
     --shadow: 8px 8px 0px var(--primary);
 }
 
@@ -34,6 +34,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+a {
+    display: block;
+    text-decoration: none;
+    color: inherit;
 }
 
 .right-section {
@@ -81,7 +87,7 @@ body {
 .login-container {
   color: var(--primary);
   font-family: "Cormorant Garamond", serif;
-  background-color: #f0ebe5;
+  background-color: var(--secondary);
   width: 100%;
   max-width: 400px;
   padding: 2rem;
@@ -217,6 +223,10 @@ button:hover {
         flex-direction: column;
     }
 
+    .left-section {
+        margin-top: 2rem;
+    }
+
     .left-section,
     .right-section {
         width: 100%;
@@ -254,7 +264,7 @@ button:hover {
         margin-bottom: 48px;
     }
     button {
-        max-width: 100%;
+        max-width: 50%;
     }
     .divider {
         margin-top: 48px;
@@ -301,7 +311,7 @@ button:hover {
         margin-bottom: 45px;
     }
     button {
-        max-width: 100%;
+        max-width: 50%;
     }
     .divider {
         margin-top: 45px;
@@ -345,7 +355,7 @@ button:hover {
         margin-bottom: 40px;
     }
     button {
-        max-width: 100%;
+        max-width: 50%;
     }
     .divider {
         margin-top: 40px;
@@ -392,7 +402,7 @@ button:hover {
         margin-bottom: 30px;
     }
     button {
-        max-width: 100%;
+        max-width: 50%;
     }
     .divider {
         margin-top: 30px;
