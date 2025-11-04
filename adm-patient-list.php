@@ -18,6 +18,39 @@
                     <button>Add Patient+</button>
                 </div>
             </div>
+            <!--Options to sort-->
+            <div class="card-container">
+                <div class="card">
+                    <div class="card-title">
+                        In-Patient
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">
+                        Out-Patient
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">
+                        New
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">
+                        Old
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">
+                        Active
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">
+                        Deceased
+                    </div>
+                </div>
+            </div>
             <div>
                 <!--Patient List Table-->
                 <table class="patient-list-table">

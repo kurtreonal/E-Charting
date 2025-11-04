@@ -25,7 +25,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 5px;
+    margin-bottom: 2rem;
 }
 
 h1 {
@@ -50,8 +50,8 @@ h1 {
 }
 
 .btn-add-patient button:hover {
-    background-color: var(--primary);
-    color: var(--secondary);
+    background-color: #cdcfc0;
+    color: var(--primary);
 }
 
 .patient-list-table {
@@ -92,6 +92,59 @@ h1 {
     background-color: var(--primary);
     color: var(--secondary);
 }
+
+.card-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    gap: 20px;
+}
+
+.card {
+    border: 1px solid black;
+    border-radius: 10px;
+    box-shadow: 5px 5px 5px hsl(0, 0%, 0%, 0.1);
+    text-align: center;
+    width: 200px; /* Uniform width */
+    height: 120px; /* Uniform height */
+    display: flex;
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    background-color: #cdcfc0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 8px 8px 10px hsl(0, 0%, 0%, 0.2);
+}
+
+.card .card-title {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 25px;
+    margin: 0;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .card {
+        width: 150px;
+        height: 100px;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .card {
+        width: 100%;
+        max-width: 300px;
+        height: 90px;
+    }
+}
+
+
 
 @media all and (max-width: 768px) {
 

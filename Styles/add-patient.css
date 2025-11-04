@@ -43,6 +43,7 @@ body {
 .header-section {
     text-align: center;
     margin-bottom: 2rem;
+    text-decoration: underline;
 }
 
 .header-section h3 {
@@ -66,7 +67,7 @@ body {
 }
 
 .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 10px;
 }
 
 .main-form-section .form-group {
@@ -88,11 +89,16 @@ body {
     color: var(--primary);
 }
 
+.radio-options {
+    display: flex;
+    gap: 2rem;
+}
+
 .side-form-section .radio-options {
     display: flex;
     justify-content: flex-start;
     gap: 1.5rem;
-    width: 150px; /* Fixed width for radio options container */
+    width: 150px;
 }
 
 .side-form-section .radio-options input[type="radio"] {
@@ -100,16 +106,16 @@ body {
 }
 
 .side-form-section .radio-options label {
-    white-space: nowrap; /* Prevent label text from wrapping */
+    white-space: nowrap;
 }
 
 .form-group input[type="text"] {
     border: none;
-    border-bottom: 2px solid var(--primary);
     background: transparent;
     padding: 0.5rem 0;
     font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
+    font-size: medium;
+    color: var(--primary);
 }
 
 .radio-group {
@@ -138,20 +144,11 @@ body {
     gap: 0.5rem;
 }
 
-/* Left side form groups */
-.form-group:nth-child(n+5) {
-    grid-column: 1 / 2;
-    flex-direction: row;
-    align-items: center;
-    gap: 2rem;
-}
-
 .form-group label {
     color: var(--primary);
     font-weight: bold;
 }
 
-/* Radio button styling */
 .form-group input[type="radio"] {
     margin-right: 0.5rem;
 }
@@ -172,10 +169,9 @@ body {
 .datetime-wrapper input[type="text"] {
     width: 15rem;
     border: none;
-    border-bottom: 2px solid var(--primary);
+    border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
+    text-align: center;
 }
 
 .datetime-wrapper label {
@@ -183,4 +179,786 @@ body {
     color: var(--primary);
     display: flex;
     align-items: center;
+}
+
+.label-section {
+    display: flex;
+    gap: 4rem;
+}
+
+.label-section .form-group {
+    flex: 1;
+}
+
+.form-group, .section-title-patient-needs, .section-title-others, .section-title-radio-options {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.label-headers {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+
+.needs-labels, .radio-options-group, .others-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.label-row {
+    display: grid;
+    grid-template-columns: 420px minmax(200px, auto);
+    align-items: center;
+    gap: 5rem;
+}
+
+.label-row label {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+}
+
+.radio-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22rem;
+}
+
+.radio-pair {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-width: 150px;
+}
+
+.radio-pair input[type="radio"] {
+    margin-right: 0.5rem;
+}
+
+.radio-pair label {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+}
+
+.others-group {
+    width: 100%;
+}
+
+.others-input {
+    width: 100%;
+    height: 24px;
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    font-family: 'Cormorant Garamond', serif;
+    padding: 0 0.5rem;
+    padding-left: 2rem;
+}
+
+.others-input:focus {
+    outline: none;
+    border-bottom: 1px solid var(--primary);
+}
+
+.history-input-wrapper{
+    flex: 1;
+}
+
+.history-input-wrapper input[type="text"] {
+    width: 15rem;
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    padding-left: 2rem;
+}
+.habits{
+    display: flex;
+    gap: 10px;
+}
+
+#reaction {
+    width: 800px;
+}
+
+#regular-medication {
+    width: 1010px;
+}
+
+#dietary-habits {
+    width: 30rem;
+}
+
+#elimination {
+    width: 425px;
+}
+
+#sleep-patterns {
+    width: 1050px;
+}
+
+
+/* Tablet Responsive Design */
+@media (max-width: 1200px) {
+    .add-patient-form {
+        gap: 2rem;
+    }
+
+    .main-form-section {
+        margin-right: 2rem;
+    }
+
+    .datetime-wrapper input[type="text"] {
+        width: 12rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .add-patient-form {
+        flex-direction: column;
+    }
+
+    .main-form-section {
+        margin-right: 0;
+        width: 100%;
+    }
+
+    .side-form-section {
+        width: 100%;
+        padding-top: 1rem;
+    }
+
+    .form-group:nth-child(3) .radio-group,
+    .form-group:nth-child(4) .radio-group {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .label-section {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .needs-labels, .radio-options-group, .others-group {
+        gap: 1.2rem;
+    }
+
+    .label-row {
+        grid-template-columns: 150px minmax(150px, auto) minmax(150px, 1fr);
+        gap: 1rem;
+    }
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+    .wrapper {
+        padding: 1rem;
+        width: 100%;
+    }
+
+    .datetime-wrapper {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .datetime-wrapper input[type="text"] {
+        width: 100%;
+    }
+
+    .form-group:nth-child(3) .radio-group,
+    .form-group:nth-child(4) .radio-group {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    .side-form-section .form-group {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .side-form-section .radio-options {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .header-section h3 {
+        font-size: 1.2rem;
+    }
+
+    .section-title-radio-options, .section-title-others {
+        display: none;
+    }
+
+    .label-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .radio-row {
+        justify-content: flex-start;
+    }
+}
+
+/* Small Mobile Devices */
+@media (max-width: 480px) {
+    .wrapper {
+        margin: 0.5rem auto;
+    }
+
+    .add-patient-form {
+        font-size: 15px;
+    }
+
+    .radio-group {
+        gap: 1rem;
+    }
+
+    .side-form-section .radio-options {
+        gap: 1rem;
+    }
+
+    .header-section {
+        margin-bottom: 1.5rem;
+    }
+}
+
+/* Large Screens (1400px and up) */
+@media (min-width: 1400px) {
+    #reaction {
+        width: 1000px;
+    }
+
+    #regular-medication {
+        width: 1200px;
+    }
+
+    #sleep-patterns {
+        width: 1240px;
+    }
+}
+
+/* Medium-Large Screens */
+@media (max-width: 1399px) {
+    .label-row {
+        grid-template-columns: 430px minmax(200px, auto);
+        gap: 5rem;
+    }
+
+    .radio-row {
+        gap: 18rem;
+    }
+
+    #reaction {
+        width: 700px;
+    }
+
+    #regular-medication {
+        width: 900px;
+    }
+
+    #sleep-patterns {
+        width: 940px;
+    }
+
+    #dietary-habits {
+        width: 25rem;
+    }
+
+    #elimination {
+        width: 400px;
+    }
+}
+
+/* Tablets and Small Laptops */
+@media (max-width: 1111px) {
+    .wrapper {
+        padding: 1rem;
+    }
+
+    .label-row {
+        grid-template-columns: 315px minmax(200px, auto);
+        gap: 1rem;
+    }
+
+    .habits {
+        flex-direction: column;
+    }
+
+    #reaction, #regular-medication, #sleep-patterns {
+        width: 100%;
+    }
+
+    #dietary-habits, #elimination {
+        width: 100%;
+    }
+    .wrapper {
+        width: 95%;
+    }
+
+    .label-headers {
+        display: none;
+    }
+
+    .label-row {
+        grid-template-columns: 1fr;
+    }
+
+    .radio-row {
+        flex-direction: column;
+        gap: 0rem;
+        align-items: flex-start;
+    }
+
+    .radio-pair {
+        justify-content: flex-start;
+    }
+
+    .others-group {
+        width: 100%;
+        border-bottom: solid 1px var(--primary);
+    }
+
+    .history-input-wrapper input[type="text"] {
+        width: 100%;
+    }
+
+}
+
+
+/* Mobile Devices */
+@media (max-width: 480px) {
+    .wrapper {
+        width: 98%;
+        padding: 0.5rem;
+    }
+
+    .header-section h3 {
+        font-size: 1rem;
+    }
+
+    .form-group label {
+        font-size: 0.9rem;
+    }
+
+    .radio-pair {
+        gap: 0.5rem;
+    }
+
+    .label-headers h3 {
+        font-size: 1rem;
+    }
+}
+
+/* Print Media Query */
+@media print {
+    .wrapper {
+        background-color: white;
+        width: 100%;
+        margin: 0;
+        padding: 1cm;
+    }
+
+    body {
+        background: none;
+    }
+
+    .add-patient-form {
+        page-break-inside: avoid;
+    }
+}
+
+.first-row {
+    display: flex;
+}
+.radio-cell {
+    display: flex;
+}
+.fr {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+    font-weight: bold;
+}
+.fr-input1 {
+    width: 7rem;
+}
+.fr-input2 {
+    width: 8rem;
+}
+
+.fr-input4 {
+    width: 8rem;
+}
+
+.fr-input1, .fr-input2, .fr-input3,
+.fr-input4, .fr-input5 {
+    background: transparent;
+    font-size: medium;
+    color: var(--primary);
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    text-align: center;
+}
+
+.assessment-table th {
+  white-space: nowrap;
+  text-align: left; /* closer alignment to input */
+}
+
+.assessment-table td .checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 20px; /* row-gap, column-gap */
+  align-items: center;
+}
+
+/* Each checkbox-wrapper stays consistent in size and alignment */
+.checkbox-wrapper-52 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 145px;
+}
+
+/* Fix label vertical alignment */
+.checkbox-wrapper-52 .cbx-lbl {
+  line-height: 1.4;
+  margin-left: 6px;
+}
+
+.checkbox-wrapper-52 input[type="checkbox"] {
+    visibility: hidden;
+    display: none;
+}
+
+td .checkbox-wrapper-52 {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+.assessment-table td {
+    padding: 5px;
+}
+
+/* Make checkboxes align better in table cells */
+.checkbox-wrapper-52 .item {
+    display: flex;
+    align-items: center;
+}
+
+  .checkbox-wrapper-52 input[type="checkbox"] {
+    visibility: hidden;
+    display: none;
+  }
+
+  .checkbox-wrapper-52 label {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+    line-height: 1;
+  }
+
+  .checkbox-wrapper-52 *,
+  .checkbox-wrapper-52 ::after,
+  .checkbox-wrapper-52 ::before {
+    box-sizing: border-box;
+  }
+
+  .checkbox-wrapper-52 .item .cbx {
+    position: relative;
+    top: 1px;
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    border: 1px solid var(--primary);
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .checkbox-wrapper-52 .item .cbx svg {
+    position: relative;
+    top: -1px;
+    transform: scale(0);
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .checkbox-wrapper-52 .item .cbx svg polyline {
+    stroke-width: 2;
+    stroke: var(--primary);
+  }
+  .checkbox-wrapper-52 .item .cbx:before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -10px 0 0 -10px;
+    width: 20px;
+    height: 20px;
+    border-radius: 100%;
+    background: var(--primary);
+    transform: scale(0);
+  }
+  .checkbox-wrapper-52 .item .cbx:after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 2px;
+    height: 2px;
+    border-radius: 2px;
+    box-shadow: 0 -18px 0 var(--primary), 12px -12px 0 var(--primary), 18px 0 0 var(--primary), 12px 12px 0 var(--primary), 0 18px 0 var(--primary), -12px 12px 0 var(--primary), -18px 0 0 var(--primary), -12px -12px 0 var(--primary);
+    transform: scale(0);
+  }
+  .checkbox-wrapper-52 .item .cbx-lbl {
+    font-weight: normal;
+    position: relative;
+    cursor: pointer;
+    transition: color 0.3s ease;
+  }
+  .checkbox-wrapper-52 .item .cbx-lbl:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: #9098a9;
+  }
+  .checkbox-wrapper-52 .item input {
+    display: none;
+  }
+  .checkbox-wrapper-52 .item input:checked + .cbx {
+    border-color: transparent;
+  }
+  .checkbox-wrapper-52 .item input:checked + .cbx svg {
+    transform: scale(1);
+    transition: all 0.4s ease;
+    transition-delay: 0.1s;
+  }
+  .checkbox-wrapper-52 .item input:checked + .cbx:before {
+    transform: scale(1);
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+  .checkbox-wrapper-52 .item input:checked + .cbx:after {
+    transform: scale(1);
+    opacity: 0;
+    transition: all 0.6s ease;
+  }
+  .checkbox-wrapper-52 .item input:checked ~ .cbx-lbl {
+    color: #9098a9;
+  }
+  .checkbox-wrapper-52 .item input:checked ~ .cbx-lbl:after {
+    width: 100%;
+    transition: all 0.4s ease;
+  }
+
+@media (max-width: 1111px){
+    .first-row input[type="text"] {
+        width: 100%;
+    }
+
+    .first-row {
+        display: block;
+    }
+
+    .radio-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+    #left {
+    margin-left: 0px !important;
+    margin-right: 0rem !important;
+    min-width: 0;
+  }
+
+  .assessment-table th {
+    white-space: unset;
+  }
+}
+
+/* Small Mobile (under 575px) */
+@media (max-width: 575px) {
+
+    .first-row input[type="text"] {
+        width: 100%;
+    }
+
+  #left {
+    margin-left: 2rem;
+    margin-right: 0;
+    min-width: 0;
+  }
+  .assessment-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .assessment-table tr {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .assessment-table th {
+    padding: 5px 0;
+    border-bottom: 1px solid var(--primary);
+  }
+
+  .assessment-table td[colspan="10"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 5px 0;
+  }
+
+  .checkbox-wrapper-52 {
+    margin-right: 8px;
+    min-width: 100px;
+  }
+
+  .checkbox-wrapper-52 .item {
+    padding: 3px 0;
+  }
+
+  .checkbox-wrapper-52 .cbx-lbl {
+    font-size: 0.8em;
+  }
+
+  /* Fix for first row inputs */
+  .first-row td {
+    padding: 5px 0;
+  }
+
+.fr-input1, .fr-input2, .fr-input3,
+.fr-input4, .fr-input5 {
+    width: 100% !important;
+    margin: 2px 0;
+  }
+
+  .radio-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+.signature-wrapper {
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    flex-wrap: wrap;
+}
+
+.signature-container {
+    margin-right: 5rem;
+    margin-left: 2rem;
+    padding-left: 3rem;
+}
+
+.signature-input {
+    width: 13rem;
+    background: transparent;
+    font-size: medium;
+    color: var(--primary);
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    text-align: center;
+}
+
+.signature-button {
+    width: 5rem;
+    margin-left: 0 !important;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #cdcfc1;
+    color: var(--primary);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    max-width: 100px;
+    display: block;
+    margin: 15px auto;
+}
+
+button:hover {
+    box-shadow: 4px 4px 0px var(--primary);
+    transform: translate(-2px, -2px);
+}
+
+/* -------------------------- */
+/* 📱 RESPONSIVE MEDIA QUERIES */
+/* -------------------------- */
+
+/* Medium screens (tablets) */
+@media (max-width: 992px) {
+    .signature-wrapper {
+        flex-wrap: wrap;
+        justify-content: space-around;
+    }
+
+    .signature-container {
+        margin: 1rem;
+        padding-left: 1rem;
+    }
+
+    .signature-input {
+        width: 10rem;
+    }
+
+    .signature-button {
+        width: 6rem;
+    }
+}
+
+/* Small screens (mobile phones) */
+@media (max-width: 600px) {
+    .signature-wrapper {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .signature-container {
+        margin: 0.8rem 0;
+        padding-left: 0;
+    }
+
+    .signature-input {
+        width: 20rem;
+        font-size: 1rem;
+    }
+
+    .signature-text {
+        display: block;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .signature-button {
+        width: 50%;
+        margin-top: 1rem;
+    }
+
+    button {
+        width: 50%;
+        max-width: none;
+        padding: 5px;
+    }
 }

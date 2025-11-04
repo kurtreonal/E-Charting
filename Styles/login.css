@@ -63,7 +63,7 @@ a {
 }
 
 .logo {
-    width: 100%;
+    width: 75%;
     height: 100%;
 }
 
@@ -74,14 +74,16 @@ a {
 
 .mica-container {
     text-align: center;
+    margin-top: 10px;
 }
 
 .mica-desc {
-  font-family: 'Hero New', sans-serif;
-  margin: 0;
-  font-size: 18px;
-  font-weight: 290;
-  color: #666;
+    font-family: 'Hero New', sans-serif;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 400;
+    color: #666;
+    letter-spacing: 5px;
 }
 
 .login-container {

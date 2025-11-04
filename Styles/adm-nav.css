@@ -105,12 +105,10 @@ body {
     font-weight: 500;
 }
 
-/* Update separator to only show after Patient nav-item */
 .nav-item:not(:last-child)::after {
-    display: none; /* Hide all separators by default */
+    display: none;
 }
 
-/* Only show separator for Patient nav-item */
 .nav-item:first-child::after {
     content: '';
     display: block;
@@ -131,8 +129,8 @@ body {
 }
 
 .nav-item:not(:last-child):hover {
-    background-color: var(--primary);
-    color: var(--secondary);
+    background-color: #cdcfc1;
+    color: var(--primary);
     transform: translate(-2px, -2px);
     box-shadow: 4px 4px 0px #000000;
     border: 1px solid var(--primary);

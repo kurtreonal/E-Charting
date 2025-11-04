@@ -1,13 +1,53 @@
+<?php
+session_start();
+
+// If the student is already logged in, redirect them to their info page
+if (isset($_SESSION['admin_id'])) {
+    header("Location: ./adm-patient-list.php");
+    exit();
+}
+?>
+
+<?php
+include 'connection.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+
+    // Secure query with prepared statement
+    $stmt = $con->prepare("SELECT admin_id, email, password FROM admin WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $admin = $result->fetch_assoc();
+
+    if ($admin && password_verify($password, $admin['password'])) {
+        // Password matches
+        $_SESSION['admin_id'] = $admin['admin_id'];
+        $_SESSION['email'] = $admin['email'];
+        echo "<script>alert('Login Successfully.');</script>";
+
+        header("Location: ./adm-patient-list.php");
+        exit();
+    } else {
+        echo "<script>alert('Incorrect email or password.');</script>";
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Page</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="./Styles/login.css">
 </head>
 <body>
+
     <div class="wrapper">
         <div class="left-section">
             <!-- Logo and hospital name section -->
@@ -17,7 +57,7 @@
                 </div>
                 <div class="mica-container">
                     <p class="mica-desc">
-                        Mica Hospital provides compassionate care and advanced medical services to keep you and your family healthy.
+                        MICA HOSPITAL PROVIDES COMPASSIONATE CARE AND ADVANCED MEDICAL SERVICES TO KEEP YOU AND YOUR FAMILY HEALTHY.
                     </p>
                 </div>
             </div>
@@ -26,36 +66,37 @@
         <div class="right-section">
             <div class="login-container">
                 <h1>Log In Your Account</h1>
-
-                <div class="input-group">
-                    <input type="email" id="email" placeholder="Email">
-                </div>
-
-                <div class="input-group">
-                    <input type="password" id="password" placeholder="Password">
-                </div>
-
-                <div class="divider"></div>
-                <a href="./landingpage.php">
-                    <button type="submit">SIGN IN</button>
-                </a>
-                <div class="divider-hide"></div>
-
-                <div class="social-login">
-                    <div class="social-btn">
-                        <i class="fa-brands fa-square-facebook"></i>
+                <form method="POST" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']) ?>">
+                    <div class="input-group">
+                        <input type="email" id="email" placeholder="Email" name="email" required>
                     </div>
-                    <div class="social-btn">
-                        <i class="fa-brands fa-square-instagram"></i>
-                    </div>
-                    <div class="social-btn">
-                        <i class="fa-brands fa-square-twitter"></i>
-                    </div>
-                </div>
 
-                <div class="footer">
-                    Don't have an account? <a href="">Sign up</a>
-                </div>
+                    <div class="input-group">
+                        <input type="password" id="password" placeholder="Password" name="password" required>
+                    </div>
+
+                    <div class="divider"></div>
+                    <a href="">
+                        <button type="submit" name="submit">SIGN IN</button>
+                    </a>
+                    <div class="divider-hide"></div>
+
+                    <div class="social-login">
+                        <div class="social-btn">
+                            <i class="fa-brands fa-square-facebook"></i>
+                        </div>
+                        <div class="social-btn">
+                            <i class="fa-brands fa-square-instagram"></i>
+                        </div>
+                        <div class="social-btn">
+                            <i class="fa-brands fa-square-twitter"></i>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        Don't have an account? <a href="">Sign up</a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
