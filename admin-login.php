@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once "./connection.php"; // adjust if your DB file has another name
+require_once "./connection.php";
 
 $error = "";
 
@@ -26,11 +26,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if ($user["user_type_desc"] !== "admin") {
             $error = "Access denied. Admins only.";
         } elseif ($password !== $user["password"]) {
-            // simple password matching
+            //password matching
             $error = "Incorrect password.";
         } else {
 
-            // SUCCESS — CORRECT LOGIN
+            //success connection
             $_SESSION["admin_id"] = $user["user_id"];
             $_SESSION["admin_email"] = $user["email"];
             $_SESSION["is_admin"] = true;

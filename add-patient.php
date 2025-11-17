@@ -1,33 +1,28 @@
 <?php
-// Put this at the very top of add-patient.php (before any HTML output)
 session_start();
-require_once "./connection.php"; // uses $con (mysqli) as in your connection.php
+require_once "./connection.php";
 
-// Only allow admin
+//Only allow admin
 if (!isset($_SESSION["is_admin"]) || $_SESSION["is_admin"] !== true) {
     header("Location: admin-login.php");
     exit();
 }
 
+//error/success messages generator
 $error = "";
 $success = "";
 $errors = [];
 
-/**
- * Helper to safely read POST values
- */
+//Helper to get POST values
 function p($key) {
     return isset($_POST[$key]) ? trim($_POST[$key]) : null;
 }
 
-/**
- * Ensure a user_type row exists and return its id.
- * Keeps logic inside transaction-safe operations (will try insert then fallback to select on race).
- */
+// Ensure user_type exists, return its id
 function ensure_user_type($con, $desc) {
-    // Look up first
+    //Look up first
     $stmt = $con->prepare("SELECT user_type_id FROM user_type WHERE user_type_desc = ?");
-    if (!$stmt) throw new Exception("Prepare user_type select failed: " . $con->error);
+    if (!$stmt) throw new Exception("Prepared statement user_type selection failed: " . $con->error);
     $stmt->bind_param("s", $desc);
     $stmt->execute();
     $stmt->bind_result($utid);
@@ -37,12 +32,11 @@ function ensure_user_type($con, $desc) {
     }
     $stmt->close();
 
-    // Not found — insert
+    //if Not found — insert
     $stmt = $con->prepare("INSERT INTO user_type (user_type_desc) VALUES (?)");
     if (!$stmt) throw new Exception("Prepare user_type insert failed: " . $con->error);
     $stmt->bind_param("s", $desc);
     if (!$stmt->execute()) {
-        // possible race condition: try select again
         $stmt->close();
         $stmt2 = $con->prepare("SELECT user_type_id FROM user_type WHERE user_type_desc = ?");
         if (!$stmt2) throw new Exception("Prepare user_type select retry failed: " . $con->error);
@@ -61,12 +55,10 @@ function ensure_user_type($con, $desc) {
     return (int)$new_id;
 }
 
+//handles form submition
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
-    // ============================
-    // Collect POST inputs
-    // ============================
-    // Patient info
+    //patient personal info
     $date_of_birth = p('date_of_birth');
     $gender = p('gender');
     $contact_number = p('contact_number');
@@ -75,11 +67,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $middle_name = p('middle_name') ?: null;
     $last_name = p('last_name');
 
-    // Admission
+    //Admission
     $admission_date = p('admission_date');
     $admission_time = p('admission_time');
 
-    // History
+    //History
     $history_date = p('history_date');
     $allergies = p('allergies');
     $duration_of_symptoms = p('duration_of_symptoms');
@@ -88,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $elimination_habits = p('elimination_habits');
     $sleep_patterns = p('sleep_patterns');
 
-    // Physical assessment
+    //Physical assessment
     $height = p('height');
     $weight = p('weight');
     $bp_lft = p('BP_lft');
@@ -96,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $strong = p('strong');
     $temp_ranges = p('temp_ranges');
 
-    // Additional physical fields (strings)
+    //Additional physical fields (strings)
     $status = p('respiration') ?: null;
     $orientation = p('orientation') ?: null;
     $skin_color = p('skin_color') ?: null;
@@ -111,14 +103,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $sputum = p('sputum') ?: null;
     $temperature = p('temperature') ?: null;
 
-    // New account fields
+    //New account fields
     $email = p('email');
     $password = p('password');
 
-    // ============================
-    // Validations
-    // ============================
-    // Patients validations
+    //validations for required fields
     if (empty($first_name)) $errors[] = "First Name is required.";
     if (empty($last_name)) $errors[] = "Last Name is required.";
     if (empty($date_of_birth)) {
@@ -150,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
         }
     }
 
-    // History validations
+    //History validations
     if (empty($history_date)) $errors[] = "History Date is required.";
     if (empty($allergies)) $errors[] = "Allergies field is required.";
     if (empty($duration_of_symptoms)) $errors[] = "Duration of Symptoms is required.";
@@ -159,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     if (empty($elimination_habits)) $errors[] = "Elimination Habits is required.";
     if (empty($sleep_patterns)) $errors[] = "Sleep Patterns is required.";
 
-    // Physical validations
+    //Physical validations
     if ($height === null || $height === '' || !is_numeric($height)) $errors[] = "Height is required and must be numeric.";
     if ($weight === null || $weight === '' || !is_numeric($weight)) $errors[] = "Weight is required and must be numeric.";
     if ($bp_lft === null || $bp_lft === '' || !is_numeric($bp_lft)) $errors[] = "BP Left is required and must be numeric.";
@@ -167,25 +156,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     if ($strong === null || $strong === '' || !is_numeric($strong)) $errors[] = "Strong is required and must be numeric.";
     if ($temp_ranges === null || $temp_ranges === '' || !is_numeric($temp_ranges)) $errors[] = "Temperature is required and must be numeric.";
 
-    // New account validations
+    //New account validations
     if (empty($email)) $errors[] = "Email is required.";
     elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email format is invalid.";
     if (empty($password)) $errors[] = "Password is required.";
     elseif (strlen($password) < 6) $errors[] = "Password must be at least 6 characters.";
 
-    // If validation errors collected, set $error and stop
+    //If validation errors collected, set $error and stop
     if (!empty($errors)) {
         $error = implode("<br>", $errors);
     } else {
-        // Begin transaction
+        //Begin transaction
         $con->begin_transaction();
 
         try {
-            // Ensure 'patient' user_type exists and get id
+            //Ensure patient user_type exists and get id
             $user_type_desc = 'patient';
             $user_type_id = ensure_user_type($con, $user_type_desc);
 
-            // Check unique email (prevent race condition - also handled by DB unique index)
+            //Check unique email
             $chk = $con->prepare("SELECT user_id FROM users WHERE email = ?");
             if (!$chk) throw new Exception("Prepare users select failed: " . $con->error);
             $chk->bind_param("s", $email);
@@ -197,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             }
             $chk->close();
 
-            // Create users row
+            //Create users row
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
             $stmt = $con->prepare("
@@ -206,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             ");
             if (!$stmt) throw new Exception("Prepare users failed: " . $con->error);
 
-            // middle_name allowed null in DB; ensure variable exists
+            // bind types: user_type_id (i), email (s), password (s), first_name (s), last_name (s), middle_name (s)
             $middle_name_bind = $middle_name;
             $stmt->bind_param("isssss", $user_type_id, $email, $hashed_password, $first_name, $last_name, $middle_name_bind);
             if (!$stmt->execute()) {
@@ -215,13 +204,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $user_id = $stmt->insert_id;
             $stmt->close();
 
-            // 1) INSERT INTO patients (link user_id)
+            //1. INSERT INTO patients (link user_id)
             $stmt = $con->prepare("INSERT INTO patients (user_id, date_of_birth, gender, contact_number, address, created_date) VALUES (?, ?, ?, ?, ?, NOW())");
             if (!$stmt) throw new Exception("Prepare patients failed: " . $con->error);
 
-            // convert contact_number to integer or null
+            //convert contact_number to integer or null. we convert it because we use a text field input instead of number
             $contact_number_val = !empty($contact_number) ? (int)$contact_number : null;
-            // bind types: user_id (i), date_of_birth (s), gender (s), contact_number (i), address (s)
+            //bind types: user_id (i), date_of_birth (s), gender (s), contact_number (i), address (s)
             $stmt->bind_param("issis", $user_id, $date_of_birth, $gender, $contact_number_val, $address);
             if (!$stmt->execute()) {
                 throw new Exception("Insert patients failed: " . $stmt->error);
@@ -229,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $patient_id = $stmt->insert_id;
             $stmt->close();
 
-            // 2) INSERT INTO admission_data
+            //2. INSERT INTO admission_data
             $mode_of_arrival = p('mode_of_arrival') ?: null;
             $instructed = p('instructed') ?: null;
             $glasses_or_contactlens = p('glasses_contact') ?: null;
@@ -247,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             }
             $stmt->close();
 
-            // 3) INSERT INTO history
+            //3. INSERT INTO history
             $personal_care = p('personal-care') ?: null;
             $ambulation = p('ambulation') ?: null;
             $communication_problem = p('communication') ?: null;
@@ -265,8 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             }
             $stmt->close();
 
-            // 4) INSERT INTO physical_assessment
-            // Cast numeric values
+            //4. INSERT INTO physical_assessment
             $height = (int)$height;
             $weight = (int)$weight;
             $bp_lft = (int)$bp_lft;
@@ -274,12 +262,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $strong = (int)$strong;
             $temp_ranges = (int)$temp_ranges;
 
-            // Use dynamic binder to avoid type-string mismatches
+            // Prepare physical_assessment insert
             $stmt = $con->prepare(
                 "INSERT INTO physical_assessment
                 (patient_id, user_id, height, weight, bp_lft, pulse, strong, status, orientation, skin_color, skin_turgor, skin_temp, mucous_membrane, peripheral_sounds, neck_vein_distention, respiratory_status, respiratory_sounds, cough, sputum, temp_ranges, temperature)
                 VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" //must match to $vars
             );
 
             if (!$stmt) throw new Exception("Prepare physical_assessment failed: " . $con->error);
@@ -308,14 +296,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                 $temperature
             ];
 
-            // Build types string: ints => 'i', everything else => 's'
+            //types string: ints = 'i', string or everything else = 's'
             $types = '';
             foreach ($vars as $v) {
                 if (is_int($v)) $types .= 'i';
                 else $types .= 's';
             }
 
-            // Prepare params by reference
+            //Prepare params by reference to call it then bind the params
             $a_params = [];
             $a_params[] = $types;
             for ($i = 0; $i < count($vars); $i++) {
@@ -329,22 +317,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             }
             $stmt->close();
 
-            // All good: commit
+            //All inserts successful
             $con->commit();
             $success = "Patient record created successfully! Patient ID: " . $patient_id;
 
-            // clear local storage and redirect (optional)
+            //clear local storage and redirect
             ?>
             <script>
                 localStorage.removeItem('formData');
                 setTimeout(function() {
                     window.location.href = 'add-patient.php';
-                }, 2000);
+                }, 3000);
             </script>
             <?php
 
         } catch (Exception $e) {
-            $con->rollback();
+            $con->rollback(); //go back
             $error = "Database Error: " . $e->getMessage();
         }
     }
@@ -1287,7 +1275,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
             <br>
             <div class="header-section">
-                <h3>PATIENT INFORMATION</h3> <!--Centered-->
+                <h3>PATIENT INFORMATION</h3>
             </div>
 
             <div class="signature-wrapper">
@@ -1368,7 +1356,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             //'this' refers to the radio button that was just clicked
             const clickedRadio = this;
 
-            //check if the button was already checked (using a data attribute as memory)
+            //check if the button was already checked
             if (clickedRadio.dataset.wasChecked === 'true') {
             //it was already checked, so uncheck it
             clickedRadio.checked = false;

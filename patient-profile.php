@@ -1,18 +1,19 @@
 <?php
 session_start();
 
-// Database connection
+//database connection
 include 'connection.php';
 
-// Get the patient user_id from session
+//get the patient user_id from session
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 
+//redirect to login if user_id is not set
 if (!$user_id) {
     header("Location: login.php");
     exit();
 }
 
-// Query to get patient data from users and patients table
+//query to get patient data from users and patients table
 $sql = "SELECT u.first_name, u.last_name, u.middle_name, p.gender, p.date_of_birth, p.contact_number, p.address
         FROM users u
         JOIN patients p ON u.user_id = p.user_id
@@ -29,7 +30,7 @@ $age = 0;
 if ($result->num_rows === 1) {
     $patient = $result->fetch_assoc();
 
-    // Calculate age from date of birth
+    //calculate age from date of birth
     $dob = new DateTime($patient['date_of_birth']);
     $today = new DateTime();
     $age = $today->diff($dob)->y;

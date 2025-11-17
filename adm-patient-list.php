@@ -1,8 +1,8 @@
 <?php
-// Database connection
+//database connection
 include 'connection.php';
 
-// Fetch patient names from database
+//get patient names from database
 $sql = "SELECT u.first_name, u.middle_name, u.last_name, p.patient_id
         FROM patients p
         JOIN users u ON p.user_id = u.user_id
