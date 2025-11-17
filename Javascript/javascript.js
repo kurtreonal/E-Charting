@@ -16,16 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
-// Replace the form submission section with this updated code
-
+//load DOM content
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('add-patient-form');
 
     if (form) {
-        // Load saved form data from localStorage on page load
+        //Load saved form data from localStorage on page load
         loadFormData();
 
-        // Save form data to localStorage as user types
+        //Save form data to localStorage as user types the data
         form.querySelectorAll('input, textarea, select').forEach(function(field) {
             field.addEventListener('change', function() {
                 saveFormData();
@@ -35,10 +34,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Handle form submission
+        //Handle form submission
         form.addEventListener('submit', function(e) {
             console.log('Form submit event triggered');
 
+            //constant fields to validate
             const requiredFields = [
                 'first_name',
                 'last_name',
@@ -62,27 +62,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 'temp_ranges'
             ];
 
+            //Array to hold missing fields
             let missingFields = [];
 
-            // Check all required fields
+            //Check all required fields
             requiredFields.forEach(function(fieldName) {
-                const field = document.querySelector(`[name="${fieldName}"]`);
-                if (field && (!field.value || field.value.trim() === '')) {
-                    missingFields.push(fieldName);
+                const field = document.querySelector(`[name="${fieldName}"]`); //Get the field by name
+                if (field && (!field.value || field.value.trim() === '')) { //Field is empty
+                    missingFields.push(fieldName); //Add to missing fields
+
+                    //Highlight the missing field
                     field.style.borderColor = 'red';
                     field.style.backgroundColor = '#ffe6e6';
-                } else if (field) {
+                } else if (field) { //if field is filled, reset styles
                     field.style.borderColor = '';
                     field.style.backgroundColor = '';
                 }
             });
 
-            // If there are missing fields, prevent submission
+            //If there are missing fields, prevent submission
             if (missingFields.length > 0) {
                 e.preventDefault();
                 alert('Please fill in all required fields:\n' + missingFields.join('\n'));
 
-                // Re-enable button if validation fails
+                //Re-enable button if validation fails
                 const submitBtn = form.querySelector('button[type="submit"]');
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -93,21 +96,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             console.log('Form validation passed, submitting...');
-            // Allow form to submit naturally
+            //Allow form to submit naturally
             return true;
         });
     }
 });
 
-// Save form data to localStorage
+//Save form data to localStorage
 function saveFormData() {
     const form = document.getElementById('add-patient-form');
-    if (!form) return;
+    if (!form) return; //If form not found, exit
 
+    //Object to hold form data
     const formData = {};
-    form.querySelectorAll('input, textarea, select').forEach(function(field) {
+    form.querySelectorAll('input, textarea, select').forEach(function(field) { //loop through all fields
         if (field.type === 'checkbox' || field.type === 'radio') {
-            if (field.checked) {
+            if (field.checked) { //save the checked fields only and exclude the unchecked and buttons
                 formData[field.name] = field.value;
             }
         } else if (field.type !== 'submit' && field.type !== 'button') {
@@ -119,7 +123,7 @@ function saveFormData() {
     console.log('Form data saved to localStorage');
 }
 
-// Load form data from localStorage
+//Load form data from localStorage
 function loadFormData() {
     const form = document.getElementById('add-patient-form');
     if (!form) return;
@@ -148,7 +152,7 @@ function loadFormData() {
     }
 }
 
-// Clear saved form data after successful submission
+//Clear saved form data after successful submission
 function clearFormData() {
     localStorage.removeItem('formData');
     console.log('Form data cleared from localStorage');

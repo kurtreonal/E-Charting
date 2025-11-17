@@ -620,17 +620,16 @@ body {
 
 .assessment-table th {
   white-space: nowrap;
-  text-align: left; /* closer alignment to input */
+  text-align: left;
 }
 
 .assessment-table td .checkbox-group {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 6px 20px; /* row-gap, column-gap */
+  gap: 6px 20px;
   align-items: center;
 }
 
-/* Each checkbox-wrapper stays consistent in size and alignment */
 .checkbox-wrapper-52 {
   display: flex;
   align-items: center;
@@ -638,7 +637,6 @@ body {
   min-width: 145px;
 }
 
-/* Fix label vertical alignment */
 .checkbox-wrapper-52 .cbx-lbl {
   line-height: 1.4;
   margin-left: 6px;
@@ -658,7 +656,6 @@ td .checkbox-wrapper-52 {
     padding: 5px;
 }
 
-/* Make checkboxes align better in table cells */
 .checkbox-wrapper-52 .item {
     display: flex;
     align-items: center;
@@ -801,7 +798,6 @@ td .checkbox-wrapper-52 {
   }
 }
 
-/* Small Mobile (under 575px) */
 @media (max-width: 575px) {
 
     .first-row input[type="text"] {
@@ -848,7 +844,6 @@ td .checkbox-wrapper-52 {
     font-size: 0.8em;
   }
 
-  /* Fix for first row inputs */
   .first-row td {
     padding: 5px 0;
   }
@@ -927,11 +922,6 @@ button:hover {
     transform: translate(-2px, -2px);
 }
 
-/* -------------------------- */
-/* 📱 RESPONSIVE MEDIA QUERIES */
-/* -------------------------- */
-
-/* Medium screens (tablets) */
 @media (max-width: 992px) {
     .signature-wrapper {
         flex-wrap: wrap;
@@ -987,7 +977,6 @@ button:hover {
     }
 }
 
-/* Highlight required fields that are empty */
 input[style*="border-color: red"],
 textarea[style*="border-color: red"],
 select[style*="border-color: red"] {
@@ -995,7 +984,6 @@ select[style*="border-color: red"] {
     background-color: #ffe6e6 !important;
 }
 
-/* Focus state for better visibility */
 input:focus,
 textarea:focus,
 select:focus {
