@@ -1,3 +1,46 @@
+<?php
+session_start();
+
+// Database connection
+include 'connection.php';
+
+// Get the patient user_id from session
+$user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+
+if (!$user_id) {
+    header("Location: login.php");
+    exit();
+}
+
+// Query to get patient data from users and patients table
+$sql = "SELECT u.first_name, u.last_name, u.middle_name, p.gender, p.date_of_birth, p.contact_number, p.address
+        FROM users u
+        JOIN patients p ON u.user_id = p.user_id
+        WHERE u.user_id = ?";
+
+$stmt = $con->prepare($sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$patient = null;
+$age = 0;
+
+if ($result->num_rows === 1) {
+    $patient = $result->fetch_assoc();
+
+    // Calculate age from date of birth
+    $dob = new DateTime($patient['date_of_birth']);
+    $today = new DateTime();
+    $age = $today->diff($dob)->y;
+} else {
+    echo "Patient profile not found.";
+    exit();
+}
+
+$stmt->close();
+$con->close();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,19 +52,22 @@
 </head>
 <body>
     <?php include "nav.php"; ?>
-    <div class="wrapper"> <!--background-color: --secondary width: 98%-->
-        <div class="container"> <!---->
+    <div class="wrapper">
+        <div class="container">
             <div class="profile-card">
-                <div class="profile-details"> <!--border for details bottom left of profile header-->
-                    <p>Test Name</p>
-                    <p>Female</p>
-                    <p>January 1, 2004</p>
-                    <p>21</p>
+                <div class="profile-details">
+                    <p><strong>Name:</strong> <?php echo htmlspecialchars($patient['first_name'] . " " . $patient['last_name']); ?></p>
+                    <p><strong>Gender:</strong> <?php echo htmlspecialchars($patient['gender']); ?></p>
+                    <p><strong>Date of Birth:</strong> <?php echo htmlspecialchars(date("F j, Y", strtotime($patient['date_of_birth']))); ?></p>
+                    <p><strong>Age:</strong> <?php echo $age; ?></p>
+                    <p><strong>Contact Number:</strong> <?php echo htmlspecialchars($patient['contact_number']); ?></p>
+                    <p><strong>Address:</strong> <?php echo htmlspecialchars($patient['address']); ?></p>
                 </div>
             </div>
-            <div class="content"> <!-- 90% of total width just a simple box with a border aligned with the profile located at the right of header-->
+            <div class="content">
                 <div class="content-section">
                     <h2 class="content-title">Description</h2>
+                    <p class="description-text"></p>
                     <div class="upload-box">
                         <p>Upload Lab Results</p>
                     </div>
