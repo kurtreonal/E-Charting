@@ -1,3 +1,356 @@
+<?php
+// Put this at the very top of add-patient.php (before any HTML output)
+session_start();
+require_once "./connection.php"; // uses $con (mysqli) as in your connection.php
+
+// Only allow admin
+if (!isset($_SESSION["is_admin"]) || $_SESSION["is_admin"] !== true) {
+    header("Location: admin-login.php");
+    exit();
+}
+
+$error = "";
+$success = "";
+$errors = [];
+
+/**
+ * Helper to safely read POST values
+ */
+function p($key) {
+    return isset($_POST[$key]) ? trim($_POST[$key]) : null;
+}
+
+/**
+ * Ensure a user_type row exists and return its id.
+ * Keeps logic inside transaction-safe operations (will try insert then fallback to select on race).
+ */
+function ensure_user_type($con, $desc) {
+    // Look up first
+    $stmt = $con->prepare("SELECT user_type_id FROM user_type WHERE user_type_desc = ?");
+    if (!$stmt) throw new Exception("Prepare user_type select failed: " . $con->error);
+    $stmt->bind_param("s", $desc);
+    $stmt->execute();
+    $stmt->bind_result($utid);
+    if ($stmt->fetch()) {
+        $stmt->close();
+        return (int)$utid;
+    }
+    $stmt->close();
+
+    // Not found — insert
+    $stmt = $con->prepare("INSERT INTO user_type (user_type_desc) VALUES (?)");
+    if (!$stmt) throw new Exception("Prepare user_type insert failed: " . $con->error);
+    $stmt->bind_param("s", $desc);
+    if (!$stmt->execute()) {
+        // possible race condition: try select again
+        $stmt->close();
+        $stmt2 = $con->prepare("SELECT user_type_id FROM user_type WHERE user_type_desc = ?");
+        if (!$stmt2) throw new Exception("Prepare user_type select retry failed: " . $con->error);
+        $stmt2->bind_param("s", $desc);
+        $stmt2->execute();
+        $stmt2->bind_result($utid2);
+        if ($stmt2->fetch()) {
+            $stmt2->close();
+            return (int)$utid2;
+        }
+        $stmt2->close();
+        throw new Exception("Could not insert or find user_type: " . $desc);
+    }
+    $new_id = $stmt->insert_id;
+    $stmt->close();
+    return (int)$new_id;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
+
+    // ============================
+    // Collect POST inputs
+    // ============================
+    // Patient info
+    $date_of_birth = p('date_of_birth');
+    $gender = p('gender');
+    $contact_number = p('contact_number');
+    $address = p('address');
+    $first_name = p('first_name');
+    $middle_name = p('middle_name') ?: null;
+    $last_name = p('last_name');
+
+    // Admission
+    $admission_date = p('admission_date');
+    $admission_time = p('admission_time');
+
+    // History
+    $history_date = p('history_date');
+    $allergies = p('allergies');
+    $duration_of_symptoms = p('duration_of_symptoms');
+    $regular_medication = p('regular_medication');
+    $dietary_habits = p('dietary_habits');
+    $elimination_habits = p('elimination_habits');
+    $sleep_patterns = p('sleep_patterns');
+
+    // Physical assessment
+    $height = p('height');
+    $weight = p('weight');
+    $bp_lft = p('BP_lft');
+    $pulse = p('pulse');
+    $strong = p('strong');
+    $temp_ranges = p('temp_ranges');
+
+    // Additional physical fields (strings)
+    $status = p('respiration') ?: null;
+    $orientation = p('orientation') ?: null;
+    $skin_color = p('skin_color') ?: null;
+    $skin_turgor = p('skin_turgor') ?: null;
+    $skin_temp = p('skin_temp') ?: null;
+    $mucous_membrane = p('mucous_membrane') ?: null;
+    $peripheral_sounds = p('peripheral_sounds') ?: null;
+    $neck_vein_distention = p('neck_vein_distention') ?: null;
+    $respiratory_status = p('respiratory_status') ?: null;
+    $respiratory_sounds = p('respiratory_sounds') ?: null;
+    $cough = p('cough') ?: null;
+    $sputum = p('sputum') ?: null;
+    $temperature = p('temperature') ?: null;
+
+    // New account fields
+    $email = p('email');
+    $password = p('password');
+
+    // ============================
+    // Validations
+    // ============================
+    // Patients validations
+    if (empty($first_name)) $errors[] = "First Name is required.";
+    if (empty($last_name)) $errors[] = "Last Name is required.";
+    if (empty($date_of_birth)) {
+        $errors[] = "Date of Birth is required.";
+    } else {
+        $dob = DateTime::createFromFormat('Y-m-d', $date_of_birth);
+        if (!$dob || $dob->format('Y-m-d') !== $date_of_birth) {
+            $errors[] = "Date of Birth must be in YYYY-MM-DD format.";
+        }
+    }
+    if (empty($gender)) $errors[] = "Gender is required.";
+    if (empty($address)) $errors[] = "Address is required.";
+
+    // Admission validations
+    if (empty($admission_date)) {
+        $errors[] = "Admission Date is required.";
+    } else {
+        $adm_date = DateTime::createFromFormat('Y-m-d', $admission_date);
+        if (!$adm_date || $adm_date->format('Y-m-d') !== $admission_date) {
+            $errors[] = "Admission Date must be in YYYY-MM-DD format.";
+        }
+    }
+    if (empty($admission_time)) {
+        $errors[] = "Admission Time is required.";
+    } else {
+        $time_obj = DateTime::createFromFormat('H:i', $admission_time);
+        if (!$time_obj || $time_obj->format('H:i') !== $admission_time) {
+            $errors[] = "Admission Time must be in HH:MM format.";
+        }
+    }
+
+    // History validations
+    if (empty($history_date)) $errors[] = "History Date is required.";
+    if (empty($allergies)) $errors[] = "Allergies field is required.";
+    if (empty($duration_of_symptoms)) $errors[] = "Duration of Symptoms is required.";
+    if (empty($regular_medication)) $errors[] = "Regular Medication is required.";
+    if (empty($dietary_habits)) $errors[] = "Dietary Habits is required.";
+    if (empty($elimination_habits)) $errors[] = "Elimination Habits is required.";
+    if (empty($sleep_patterns)) $errors[] = "Sleep Patterns is required.";
+
+    // Physical validations
+    if ($height === null || $height === '' || !is_numeric($height)) $errors[] = "Height is required and must be numeric.";
+    if ($weight === null || $weight === '' || !is_numeric($weight)) $errors[] = "Weight is required and must be numeric.";
+    if ($bp_lft === null || $bp_lft === '' || !is_numeric($bp_lft)) $errors[] = "BP Left is required and must be numeric.";
+    if ($pulse === null || $pulse === '' || !is_numeric($pulse)) $errors[] = "Pulse is required and must be numeric.";
+    if ($strong === null || $strong === '' || !is_numeric($strong)) $errors[] = "Strong is required and must be numeric.";
+    if ($temp_ranges === null || $temp_ranges === '' || !is_numeric($temp_ranges)) $errors[] = "Temperature is required and must be numeric.";
+
+    // New account validations
+    if (empty($email)) $errors[] = "Email is required.";
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email format is invalid.";
+    if (empty($password)) $errors[] = "Password is required.";
+    elseif (strlen($password) < 6) $errors[] = "Password must be at least 6 characters.";
+
+    // If validation errors collected, set $error and stop
+    if (!empty($errors)) {
+        $error = implode("<br>", $errors);
+    } else {
+        // Begin transaction
+        $con->begin_transaction();
+
+        try {
+            // Ensure 'patient' user_type exists and get id
+            $user_type_desc = 'patient';
+            $user_type_id = ensure_user_type($con, $user_type_desc);
+
+            // Check unique email (prevent race condition - also handled by DB unique index)
+            $chk = $con->prepare("SELECT user_id FROM users WHERE email = ?");
+            if (!$chk) throw new Exception("Prepare users select failed: " . $con->error);
+            $chk->bind_param("s", $email);
+            $chk->execute();
+            $chk->store_result();
+            if ($chk->num_rows > 0) {
+                $chk->close();
+                throw new Exception("Email already exists. Please use a different email.");
+            }
+            $chk->close();
+
+            // Create users row
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+            $stmt = $con->prepare("
+                INSERT INTO users (user_type_id, email, password, first_name, last_name, middle_name)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            if (!$stmt) throw new Exception("Prepare users failed: " . $con->error);
+
+            // middle_name allowed null in DB; ensure variable exists
+            $middle_name_bind = $middle_name;
+            $stmt->bind_param("isssss", $user_type_id, $email, $hashed_password, $first_name, $last_name, $middle_name_bind);
+            if (!$stmt->execute()) {
+                throw new Exception("Insert users failed: " . $stmt->error);
+            }
+            $user_id = $stmt->insert_id;
+            $stmt->close();
+
+            // 1) INSERT INTO patients (link user_id)
+            $stmt = $con->prepare("INSERT INTO patients (user_id, date_of_birth, gender, contact_number, address, created_date) VALUES (?, ?, ?, ?, ?, NOW())");
+            if (!$stmt) throw new Exception("Prepare patients failed: " . $con->error);
+
+            // convert contact_number to integer or null
+            $contact_number_val = !empty($contact_number) ? (int)$contact_number : null;
+            // bind types: user_id (i), date_of_birth (s), gender (s), contact_number (i), address (s)
+            $stmt->bind_param("issis", $user_id, $date_of_birth, $gender, $contact_number_val, $address);
+            if (!$stmt->execute()) {
+                throw new Exception("Insert patients failed: " . $stmt->error);
+            }
+            $patient_id = $stmt->insert_id;
+            $stmt->close();
+
+            // 2) INSERT INTO admission_data
+            $mode_of_arrival = p('mode_of_arrival') ?: null;
+            $instructed = p('instructed') ?: null;
+            $glasses_or_contactlens = p('glasses_contact') ?: null;
+            $dentures = p('dentures') ?: null;
+            $ambulatory_or_prosthesis = p('ambulatory') ?: null;
+            $smoker = p('smoker') ?: null;
+            $drinker = p('drinker') ?: null;
+
+            $stmt = $con->prepare("INSERT INTO admisison_data (patient_id, user_id, admission_date, admission_time, mode_of_arrival, instructed, glasses_or_contactlens, dentures, ambulatory_or_prosthesis, smoker, drinker, created_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            if (!$stmt) throw new Exception("Prepare admission_data failed: " . $con->error);
+
+            $stmt->bind_param("iisssssssss", $patient_id, $user_id, $admission_date, $admission_time, $mode_of_arrival, $instructed, $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker);
+            if (!$stmt->execute()) {
+                throw new Exception("Insert admission_data failed: " . $stmt->error);
+            }
+            $stmt->close();
+
+            // 3) INSERT INTO history
+            $personal_care = p('personal-care') ?: null;
+            $ambulation = p('ambulation') ?: null;
+            $communication_problem = p('communication') ?: null;
+            $isolation = p('isolation') ?: null;
+            $skin_care = p('skin-care') ?: null;
+            $wound_care = p('wound-care') ?: null;
+            $others = p('others') ?: '';
+
+            $stmt = $con->prepare("INSERT INTO history (patient_id, user_id, history_date, allergies, duration_of_symptoms, regular_medication, dietary_habits, elimination_habits, sleep_patterns, personal_care, ambulation, communication_problem, isolation, skin_care, wound_care, others, created_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            if (!$stmt) throw new Exception("Prepare history failed: " . $con->error);
+
+            $stmt->bind_param("iissssssssssssss", $patient_id, $user_id, $history_date, $allergies, $duration_of_symptoms, $regular_medication, $dietary_habits, $elimination_habits, $sleep_patterns, $personal_care, $ambulation, $communication_problem, $isolation, $skin_care, $wound_care, $others);
+            if (!$stmt->execute()) {
+                throw new Exception("Insert history failed: " . $stmt->error);
+            }
+            $stmt->close();
+
+            // 4) INSERT INTO physical_assessment
+            // Cast numeric values
+            $height = (int)$height;
+            $weight = (int)$weight;
+            $bp_lft = (int)$bp_lft;
+            $pulse = (int)$pulse;
+            $strong = (int)$strong;
+            $temp_ranges = (int)$temp_ranges;
+
+            // Use dynamic binder to avoid type-string mismatches
+            $stmt = $con->prepare(
+                "INSERT INTO physical_assessment
+                (patient_id, user_id, height, weight, bp_lft, pulse, strong, status, orientation, skin_color, skin_turgor, skin_temp, mucous_membrane, peripheral_sounds, neck_vein_distention, respiratory_status, respiratory_sounds, cough, sputum, temp_ranges, temperature)
+                VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+
+            if (!$stmt) throw new Exception("Prepare physical_assessment failed: " . $con->error);
+
+            $vars = [
+                $patient_id,
+                $user_id,
+                $height,
+                $weight,
+                $bp_lft,
+                $pulse,
+                $strong,
+                $status,
+                $orientation,
+                $skin_color,
+                $skin_turgor,
+                $skin_temp,
+                $mucous_membrane,
+                $peripheral_sounds,
+                $neck_vein_distention,
+                $respiratory_status,
+                $respiratory_sounds,
+                $cough,
+                $sputum,
+                $temp_ranges,
+                $temperature
+            ];
+
+            // Build types string: ints => 'i', everything else => 's'
+            $types = '';
+            foreach ($vars as $v) {
+                if (is_int($v)) $types .= 'i';
+                else $types .= 's';
+            }
+
+            // Prepare params by reference
+            $a_params = [];
+            $a_params[] = $types;
+            for ($i = 0; $i < count($vars); $i++) {
+                $a_params[] = &$vars[$i];
+            }
+
+            call_user_func_array([$stmt, 'bind_param'], $a_params);
+
+            if (!$stmt->execute()) {
+                throw new Exception("Insert physical_assessment failed: " . $stmt->error);
+            }
+            $stmt->close();
+
+            // All good: commit
+            $con->commit();
+            $success = "Patient record created successfully! Patient ID: " . $patient_id;
+
+            // clear local storage and redirect (optional)
+            ?>
+            <script>
+                localStorage.removeItem('formData');
+                setTimeout(function() {
+                    window.location.href = 'add-patient.php';
+                }, 2000);
+            </script>
+            <?php
+
+        } catch (Exception $e) {
+            $con->rollback();
+            $error = "Database Error: " . $e->getMessage();
+        }
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,19 +364,34 @@
     <?php include "adm-nav.php" ?>
     <div class="wrapper">
         <div class="container">
+            <!-- Error/Success Messages -->
+            <?php if (!empty($error)): ?>
+                <div class="alert alert-danger" style="background-color: #f8d7da; color: #721c24; padding: 12px; margin-bottom: 20px; border: 1px solid #f5c6cb; border-radius: 4px;">
+                    <strong>Error:</strong> <?php echo $error; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($success)): ?>
+                <div class="alert alert-success" style="background-color: #d4edda; color: #155724; padding: 12px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 4px;">
+                    <strong>Success:</strong> <?php echo $success; ?>
+                </div>
+            <?php endif; ?>
+
             <div class="header-section">
-                <h3>NURSING ADMISSION DATA</h3> <!--Centered-->
+                <h3>NURSING ADMISSION DATA</h3>
             </div>
-            <form action="" class="add-patient-form">
+
+            <form action="" method="POST" id="add-patient-form">
+                <div class="add-patient-form">
                 <div class="main-form-section">
                     <div class="datetime-wrapper">
                         <div class="form-group">
-                            <label for="admission-date">Date:</label>
-                            <input type="text" id="admission-date" name="admission-date" required>
+                            <label for="admission_date">Date:</label>
+                            <input class="signature-input-adm" type="date" id="admission_date" name="admission_date" required>
                         </div>
                         <div class="form-group">
-                            <label for="time">Time:</label>
-                            <input type="text" id="time" name="time" required>
+                            <label for="admission_time">Time:</label>
+                            <input class="signature-input-adm" type="time" id="admission_time" name="admission_time" required>
                         </div>
                     </div>
                     <div class="form-group">
@@ -31,7 +399,7 @@
                         <div class="radio-group">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="wheelchair" class="item">
-                                    <input type="radio" id="wheelchair" name="mode_of_arrival" value="Wheelchair" class="hidden toggle-radio"/>
+                                    <input type="radio" id="wheelchair" name="mode_of_arrival" value="wheelchair" class="hidden toggle-radio"/>
                                     <label for="wheelchair" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -43,7 +411,7 @@
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="stretcher" class="item">
-                                    <input type="radio" id="stretcher" name="mode_of_arrival" value="Stretcher" class="hidden toggle-radio"/>
+                                    <input type="radio" id="stretcher" name="mode_of_arrival" value="stretcher" class="hidden toggle-radio"/>
                                     <label for="stretcher" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -249,43 +617,44 @@
                         </div>
                     </div>
                 </div>
-            </form>
-            <div class="header-section">
-                <h3>NURSING HISTORY</h3> <!--Centered-->
             </div>
-            <form action="" class="">
+            <div class="header-section">
+                <h3>NURSING HISTORY</h3>
+            </div>
+
+            <div class="add-patient-form">
                 <div class="">
                     <div class="history-wrapper">
                         <div class="history-input-wrapper">
                             <div class="form-group">
-                                <label for="history-date">Date:</label>
-                                <input type="text" id="history-date" name="history-date" required>
+                                <label for="history_date">Date:</label>
+                                <input class="signature-input-adm" type="date" id="history_date" name="history_date" value="" required>
                             </div>
                             <div class="form-group">
                                 <label for="allergies">Allergies:</label>
-                                <input type="text" id="allergies" name="allergies" required>
+                                <input type="text" id="allergies" name="allergies" placeholder="eg., Penicillin" required>
                             </div>
                             <div class="form-group">
-                                <label for="reaction">Reaction for Hospitalization: Duration of Symptoms:</label>
-                                <input type="text" id="reaction" name="reaction" required>
+                                <label for="duration_of_symptoms">Reaction for Hospitalization: Duration of Symptoms:</label>
+                                <input type="text" id="duration_of_symptoms" name="duration_of_symptoms" placeholder="eg., hives" required>
                             </div>
                             <div class="form-group">
-                                <label for="regular-medication">Regular Medication:</label>
-                                <input type="text" id="regular-medication" name="regular-medication" required>
+                                <label for="regular_medication">Regular Medication:</label>
+                                <input type="text" id="regular_medication" name="regular_medication" placeholder="eg., Lisinopril 10mg, once daily" required>
                             </div>
                             <div class="habits">
                                 <div class="form-group">
-                                    <label for="dietary-habits">Dietary Habits:</label>
-                                    <input type="text" id="dietary-habits" name="dietary-habits" required>
+                                    <label for="dietary_habits">Dietary Habits:</label>
+                                    <input type="text" id="dietary_habits" name="dietary_habits" placeholder="eg., Balanced diet" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="elimination">Elimination Habits:</label>
-                                    <input type="text" id="elimination" name="elimination" required>
+                                    <label for="elimination_habits">Elimination Habits:</label>
+                                    <input type="text" id="elimination_habits" name="elimination_habits" placeholder="eg., Daily bowel movements" required>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="sleep-patterns">Sleep Patterns:</label>
-                                <input type="text" id="sleep-patterns" name="sleep-patterns" required>
+                                <label for="sleep_patterns">Sleep Patterns:</label>
+                                <input type="text" id="sleep_patterns" name="sleep_patterns" placeholder="eg., Difficulty falling asleep (insomnia)" required>
                             </div>
                         </div>
                         <div class="label-headers">
@@ -505,24 +874,23 @@
                 </div>
             </div>
 
-            </form>
             <div class="header-section">
                 <h3>NURSING PHYSICAL ASSESSMENT</h3>
             </div>
 
-            <form action="" class="fr">
+            <div class="fr">
                 <div class="first-row">
                     <span>Ht:</span>
-                    <div><input class="fr-input1" type="text" name="height" required ></div>
+                    <div><input class="fr-input1" type="text" name="height" placeholder="Height" required ></div>
 
                     <span>Wt:</span>
-                    <div><input class="fr-input2" type="text" name="weight" required ></div>
+                    <div><input class="fr-input2" type="text" name="weight" placeholder="Weight" required ></div>
 
                     <span>BP lft:</span>
-                    <div><input class="fr-input3" type="text" name="BP_lft" required></div>
+                    <div><input class="fr-input3" type="text" name="BP_lft" placeholder="BP reading" required></div>
 
                     <span>Pulse:</span>
-                    <div><input class="fr-input4" type="text" name="pulse" required ></div>
+                    <div><input class="fr-input4" type="text" name="pulse" placeholder="Pulse rate" required></div>
 
                     <span>Strong:</span>
                     <div><input class="fr-input5" type="text" name="strong" required></div>
@@ -730,7 +1098,6 @@
                     <tr>
                         <th>Skin Temp:</th>
                         <td colspan="10">
-                            <!-- repeat same pattern for: warm, dry, clammy, cool, diaphoretic, moist -->
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-temp-warm" class="item">
                                     <input type="radio" id="skin-temp-warm" name="skin-temp" value="warm" class="hidden toggle-radio"/>
@@ -877,40 +1244,150 @@
                     <tr>
                         <th>Temperature:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="temperature-oral" class="item"><input type="radio" id="temperature-oral" name="temperature" value="oral" class="hidden toggle-radio"/><label for="temperature-oral" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="temperature-oral" class="cbx-lbl">Oral</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="temperature-axilla" class="item"><input type="radio" id="temperature-axilla" name="temperature" value="axilla" class="hidden toggle-radio"/><label for="temperature-axilla" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="temperature-axilla" class="cbx-lbl">Axilla</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="temperature-rectal" class="item"><input type="radio" id="temperature-rectal" name="temperature" value="rectal" class="hidden toggle-radio"/><label for="temperature-rectal" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="temperature-rectal" class="cbx-lbl">Rectal</label></label></div>
+                            <div class="checkbox-wrapper-52">
+                                <input class="temp-input" type="number" name="temp_ranges" id="temp-ranges" placeholder="Degrees" required>
+                            </div>
+                            <div class="checkbox-wrapper-52">
+                                <label for="temperature-oral" class="item">
+                                    <input type="radio" id="temperature-oral" name="temperature" value="oral" class="hidden toggle-radio"/>
+                                    <label for="temperature-oral" class="cbx">
+                                        <svg width="14px" height="12px" viewBox="0 0 14 12">
+                                            <polyline points="1 7.6 5 11 13 1"></polyline>
+                                        </svg>
+                                    </label>
+                                    <label for="temperature-oral" class="cbx-lbl">Oral</label>
+                                </label>
+                            </div>
+                            <div class="checkbox-wrapper-52">
+                                <label for="temperature-axilla" class="item">
+                                    <input type="radio" id="temperature-axilla" name="temperature" value="axilla" class="hidden toggle-radio"/>
+                                    <label for="temperature-axilla" class="cbx">
+                                        <svg width="14px" height="12px" viewBox="0 0 14 12">
+                                            <polyline points="1 7.6 5 11 13 1"></polyline>
+                                        </svg>
+                                    </label>
+                                    <label for="temperature-axilla" class="cbx-lbl">Axilla</label>
+                                </label>
+                            </div>
+                            <div class="checkbox-wrapper-52">
+                                <label for="temperature-rectal" class="item">
+                                    <input type="radio" id="temperature-rectal" name="temperature" value="rectal" class="hidden toggle-radio"/>
+                                    <label for="temperature-rectal" class="cbx">
+                                        <svg width="14px" height="12px" viewBox="0 0 14 12">
+                                            <polyline points="1 7.6 5 11 13 1"></polyline>
+                                        </svg>
+                                    </label>
+                                    <label for="temperature-rectal" class="cbx-lbl">Rectal</label>
+                                </label>
+                            </div>
                         </td>
                     </tr>
                 </table>
-            </form>
+            </div>
+
+            <br>
+            <div class="header-section">
+                <h3>PATIENT INFORMATION</h3> <!--Centered-->
+            </div>
 
             <div class="signature-wrapper">
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text">
+                        <input class="signature-input" type="text" id="last_name" name="last_name" required>
                     </div>
                     <span class="signature-text">Last Name</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text">
+                        <input class="signature-input" type="text" id="first_name" name="first_name" required>
                     </div>
                     <span class="signature-text">First Name</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text">
+                        <input class="signature-input" type="text" id="middle_name" name="middle_name">
                     </div>
                     <span class="signature-text">Middle Name</span>
                 </div>
-
-                <div class="signature-button">
-                    <button type="submit">Add</button>
+                <div class="signature-container">
+                    <div class="">
+                        <input class="signature-input" type="date" id="date_of_birth" name="date_of_birth" required>
+                    </div>
+                    <span class="signature-text">Date of Birth</span>
+                </div>
+                <div class="signature-container">
+                    <div class="">
+                        <input class="signature-input" type="text" id="gender" name="gender" required>
+                    </div>
+                    <span class="signature-text">Gender</span>
+                </div>
+                <div class="signature-container">
+                    <div class="">
+                        <input class="signature-input" type="number" id="contact_number" name="contact_number">
+                    </div>
+                    <span class="signature-text">Contact Number</span>
+                </div>
+                <div class="signature-container">
+                    <div class="">
+                        <input class="signature-input" type="text" id="address" name="address" required>
+                    </div>
+                    <span class="signature-text">Address</span>
+                </div>
+                <div class="signature-container">
+                    <div class="">
+                        <input class="signature-input" type="email" id="email" name="email" required>
+                    </div>
+                    <span class="signature-text">Email</span>
+                </div>
+                <div class="signature-container">
+                    <div class="">
+                        <input class="signature-input" type="password" id="password" name="password" required>
+                    </div>
+                    <span class="signature-text">Password</span>
                 </div>
 
+                    <div class="signature-button">
+                        <button type="submit" name="save_patient" value="save" id="submitBtn">Save</button>
+                    </div>
+
+                </form>
             </div>
         </div>
     </div>
+
+<!--IMPORTANT! DON'T REMOVE OR SEPARATE THIS BLOCK OF CODE-->
+    <script>
+        //wait for the document to be fully loaded before running the script
+        document.addEventListener('DOMContentLoaded', function() {
+
+        //select all radio buttons with the 'toggle-radio' class.
+        const toggleRadios = document.querySelectorAll('.toggle-radio');
+
+        toggleRadios.forEach(radio => {
+        radio.addEventListener('click', function() {
+            //'this' refers to the radio button that was just clicked
+            const clickedRadio = this;
+
+            //check if the button was already checked (using a data attribute as memory)
+            if (clickedRadio.dataset.wasChecked === 'true') {
+            //it was already checked, so uncheck it
+            clickedRadio.checked = false;
+            clickedRadio.dataset.wasChecked = 'false';
+            } else {
+            //it was not checked, so mark it as 'wasChecked'
+            clickedRadio.dataset.wasChecked = 'true';
+
+            //go through all *other* radio buttons
+            toggleRadios.forEach(otherRadio => {
+                //reset the 'wasChecked' status for any other button in the *same group*
+                if (otherRadio !== clickedRadio && otherRadio.name === clickedRadio.name) {
+                otherRadio.dataset.wasChecked = 'false';
+                }
+            });
+            }
+        });
+        });
+    });
+    </script>
 </body>
 </html>

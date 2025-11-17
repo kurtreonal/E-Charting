@@ -114,7 +114,7 @@ body {
 
 .prescription-box {
     border: 1px solid var(--primary);
-    padding: 8rem 12rem 8rem 8rem;
+    padding: 8rem 17rem 8rem 8rem;
     background-color: var(--secondary);
     height: 24rem;
 }

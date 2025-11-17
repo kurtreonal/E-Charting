@@ -1,49 +1,75 @@
 <?php
 session_start();
 
-// If the student is already logged in, redirect them to their info page
-if (isset($_SESSION['admin_id'])) {
-    header("Location: ./adm-patient-list.php");
-    exit();
-}
-?>
+// Database connection
 
-<?php
 include 'connection.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
+$error_message = "";
 
-    // Secure query with prepared statement
-    $stmt = $con->prepare("SELECT admin_id, email, password FROM admin WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
+    $email = trim($_POST['email']);
+    $password = trim($_POST['password']);
 
-    $result = $stmt->get_result();
-    $admin = $result->fetch_assoc();
-
-    if ($admin && password_verify($password, $admin['password'])) {
-        // Password matches
-        $_SESSION['admin_id'] = $admin['admin_id'];
-        $_SESSION['email'] = $admin['email'];
-        echo "<script>alert('Login Successfully.');</script>";
-
-        header("Location: ./adm-patient-list.php");
-        exit();
+    // Validate input
+    if (empty($email) || empty($password)) {
+        $error_message = "Email and password are required.";
     } else {
-        echo "<script>alert('Incorrect email or password.');</script>";
+        // Query to get user by email
+        $sql = "SELECT u.user_id, u.password, u.first_name, u.last_name, ut.user_type_desc
+                FROM users u
+                JOIN user_type ut ON u.user_type_id = ut.user_type_id
+                WHERE u.email = ?";
+
+        $stmt = $con->prepare($sql);
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            $user = $result->fetch_assoc();
+
+            // Verify password
+            if (password_verify($password, $user['password'])) {
+                // Set session variables
+                $_SESSION['user_id'] = $user['user_id'];
+                $_SESSION['user_type'] = $user['user_type_desc'];
+                $_SESSION['first_name'] = $user['first_name'];
+                $_SESSION['last_name'] = $user['last_name'];
+
+                // Redirect based on user type
+                switch ($user['user_type_desc']) {
+                    case 'admin':
+                        header("Location: ./adm-patient-list.php");
+                        break;
+                    case 'nurse':
+                        header("Location: ./dashboard/nurse_dashboard.php");
+                        break;
+                    case 'patient':
+                        header("Location: ./landingpage.php");
+                        break;
+                }
+                exit();
+            } else {
+                $error_message = "Invalid email or password.";
+            }
+        } else {
+            $error_message = "Invalid email or password.";
+        }
+
+        $stmt->close();
     }
 }
-?>
 
+$con->close();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Page</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="./Styles/login.css">
 </head>
 <body>
@@ -66,6 +92,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="right-section">
             <div class="login-container">
                 <h1>Log In Your Account</h1>
+
+                <?php if (!empty($error_message)): ?>
+                    <div class="error-message" style="color: red; margin-bottom: 15px; padding: 10px; background-color: #ffe6e6; border-radius: 4px;">
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                <?php endif; ?>
+
                 <form method="POST" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']) ?>">
                     <div class="input-group">
                         <input type="email" id="email" placeholder="Email" name="email" required>

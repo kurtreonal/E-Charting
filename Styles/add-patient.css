@@ -215,7 +215,7 @@ body {
     display: grid;
     grid-template-columns: 420px minmax(200px, auto);
     align-items: center;
-    gap: 5rem;
+    gap: 10rem;
 }
 
 .label-row label {
@@ -606,6 +606,18 @@ body {
     text-align: center;
 }
 
+.temp-input {
+    background: transparent;
+    font-size: medium;
+    color: var(--primary);
+    width: 7rem;
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    text-align: center;
+}
+
 .assessment-table th {
   white-space: nowrap;
   text-align: left; /* closer alignment to input */
@@ -856,19 +868,31 @@ td .checkbox-wrapper-52 {
 
 .signature-wrapper {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     text-align: center;
     flex-wrap: wrap;
 }
 
 .signature-container {
-    margin-right: 5rem;
-    margin-left: 2rem;
+    margin-right: 1rem;
+    margin-left: 0rem;
     padding-left: 3rem;
 }
 
 .signature-input {
-    width: 13rem;
+    width: 25rem;
+    background: transparent;
+    font-size: medium;
+    color: var(--primary);
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    text-align: center;
+}
+
+.signature-input-adm {
+    width: 15rem;
     background: transparent;
     font-size: medium;
     color: var(--primary);
@@ -961,4 +985,47 @@ button:hover {
         max-width: none;
         padding: 5px;
     }
+}
+
+/* Highlight required fields that are empty */
+input[style*="border-color: red"],
+textarea[style*="border-color: red"],
+select[style*="border-color: red"] {
+    border: 2px solid #dc3545 !important;
+    background-color: #ffe6e6 !important;
+}
+
+/* Focus state for better visibility */
+input:focus,
+textarea:focus,
+select:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Success message styling */
+.alert-success {
+    animation: slideDown 0.5s ease-in-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Error message styling */
+.alert-danger {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
 }

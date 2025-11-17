@@ -9,9 +9,9 @@
 <body>
     <nav class="navbar">
         <div class="left-section">
-            <div class="nav-logo">
+            <a href="./adm-patient-list.php" class="nav-logo">
                 <img src="./Assets/logo.svg" alt="Hospital Logo" class="logo">
-            </div>
+            </a>
             <div class="page-title">
                 <p>Nurse Department</p>
             </div>
@@ -24,7 +24,7 @@
         </div>
 
         <div class="nav-links">
-            <a href="#" class="nav-item">Patient</a>
+            <a href="./adm-patient-list.php" class="nav-item">Patient</a>
             <a href="#" class="nav-item">Profile</a>
             <a href="#" class="nav-item">
                 <img src="./Assets/notification.svg" alt="Notifications" class="notification-icon">

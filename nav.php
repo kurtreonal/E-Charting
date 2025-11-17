@@ -8,7 +8,7 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="">
+        <a href="./landingpage.php">
             <div class="nav-logo">
                 <img src="./Assets/logo.svg" alt="Hospital Logo" class="logo">
             </div>

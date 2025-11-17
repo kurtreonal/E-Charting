@@ -1,3 +1,24 @@
+<?php
+// Database connection
+include 'connection.php';
+
+// Fetch patient names from database
+$sql = "SELECT u.first_name, u.middle_name, u.last_name, p.patient_id
+        FROM patients p
+        JOIN users u ON p.user_id = u.user_id
+        ORDER BY u.first_name ASC";
+
+$result = $con->query($sql);
+$patients = [];
+
+if ($result->num_rows > 0) {
+    while($row = $result->fetch_assoc()) {
+        $patients[] = $row;
+    }
+}
+
+$con->close();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,7 +36,9 @@
             <div class="header-section">
                 <h1>PATIENT</h1>
                 <div class="btn-add-patient">
-                    <button>Add Patient+</button>
+                    <a href="add-patient.php">
+                        <button>Add Patient+</button>
+                    </a>
                 </div>
             </div>
             <!--Options to sort-->
@@ -51,79 +74,19 @@
                     </div>
                 </div>
             </div>
-            <div>
-                <!--Patient List Table-->
-                <table class="patient-list-table">
-                    <tbody>
-                        <tr>
-                            <td>Kurt Isaiah Pascua</td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Kristian Kyle Elle Madridejo</td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Ever Mae Manansala</td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Dianne Nataya</td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Rhalp Louis Mañibo </td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>
-                                <a href="" class="">Edit</a>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <!--Patient List Table-->
+            <table class="patient-list-table">
+                <tbody>
+                    <?php foreach($patients as $patient): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['middle_name'] . ' ' . $patient['last_name']); ?></td>
+                        <td>
+                            <a href="edit-patient.php?patient_id=<?php echo $patient['patient_id']; ?>" class="">Edit</a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </body>

@@ -71,7 +71,7 @@ body {
     position: relative;
     border: 1px solid var(--primary);
     text-align: center;
-    width: 110px;
+    width: 120px;
     font-weight: 500;
 }
 /* Add separators between nav items */
