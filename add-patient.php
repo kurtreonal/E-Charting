@@ -1,7 +1,8 @@
 <?php
-session_start();
-require_once "./connection.php";
+//database connection
+include 'connection.php';
 
+session_start();
 //Only allow admin
 if (!isset($_SESSION["is_admin"]) || $_SESSION["is_admin"] !== true) {
     header("Location: admin-login.php");

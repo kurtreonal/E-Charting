@@ -165,3 +165,34 @@ h1 {
         padding: 2px 0.5rem;
     }
 }
+
+
+.signature-button {
+    width: 5rem;
+    margin-left: 0 !important;
+    display: flex;
+}
+
+.logout-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #cdcfc1;
+    color: var(--primary);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    max-width: 100px;
+    display: block;
+    margin: 15px auto;
+}
+
+a {
+    text-decoration: none;
+
+}
+
+button:hover {
+    box-shadow: 4px 4px 0px var(--primary);
+    transform: translate(-2px, -2px);
+}

@@ -1,6 +1,12 @@
 <?php
 //database connection
 include 'connection.php';
+session_start();
+//Only allow admin
+if (!isset($_SESSION["is_admin"]) || $_SESSION["is_admin"] !== true) {
+    header("Location: admin-login.php");
+    exit();
+}
 
 //get patient names from database
 $sql = "SELECT u.first_name, u.middle_name, u.last_name, p.patient_id
@@ -26,6 +32,7 @@ $con->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nurse Department Patient List</title>
     <link rel="stylesheet" href="./Styles/adm-patient-list.css">
+    <script src="./Javascript/logoutFunction.js" defer></script>
 </head>
 <body>
     <?php include "adm-nav.php"; ?>
@@ -87,6 +94,11 @@ $con->close();
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+        <div class="signature-button">
+            <form method="POST" action="./logout.php" onsubmit="return confirmLogout()">
+                <button class="logout-btn" type="submit" name="logout" id="logout">Logout</button>
+            </form>
         </div>
     </div>
 </body>

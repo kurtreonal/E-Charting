@@ -49,6 +49,7 @@ $con->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient Profile</title>
     <script src="./Javascript/javascript.js" defer></script>
+    <script src="./Javascript/logoutFunction.js" defer></script>
     <link rel="stylesheet" href="./Styles/patient-profile.css">
 </head>
 <body>
@@ -81,6 +82,11 @@ $con->close();
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="signature-button">
+            <form method="POST" action="./logout.php" onsubmit="return confirmLogout()">
+                <button type="submit" name="logout" id="logout">Logout</button>
+            </form>
         </div>
     </div>
 </body>

@@ -1,47 +1,50 @@
 <?php
 session_start();
-require_once "./connection.php";
+
+$host = "localhost";
+$user = "root";
+$pass = "";
+$e_charting = "e_charting";
+
+$con = mysqli_connect($host, $user, $pass, $e_charting);
+
+if(mysqli_connect_errno()){
+    echo "Failed to connect to the server: MYSQL".mysqli_connect_error();
+}
 
 $error = "";
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
+    $email = mysqli_real_escape_string($con, $_POST["email"]);
+    $password = $_POST["password"];
 
-    $email = trim($_POST["email"]);
-    $password = trim($_POST["password"]);
+    $query = "SELECT u.user_id, u.password, ut.user_type_desc
+              FROM users u
+              INNER JOIN user_type ut ON u.user_type_id = ut.user_type_id
+              WHERE u.email = '$email'";
 
-    $sql = "SELECT users.*, user_type.user_type_desc
-            FROM users
-            JOIN user_type ON users.user_type_id = user_type.user_type_id
-            WHERE email = ?";
-    $stmt = $con->prepare($sql);
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $result = mysqli_query($con, $query);
 
-    if ($result->num_rows !== 1) {
-        $error = "Account not found.";
-    } else {
-        $user = $result->fetch_assoc();
+    if (mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
 
-        if ($user["user_type_desc"] !== "admin") {
-            $error = "Access denied. Admins only.";
-        } elseif ($password !== $user["password"]) {
-            //password matching
-            $error = "Incorrect password.";
+        if ($password === $row["password"]) {
+            if ($row["user_type_desc"] === "admin") {
+                $_SESSION["user_id"] = $row["user_id"];
+                $_SESSION["is_admin"] = true;
+                header("Location: ./adm-patient-list.php");
+                exit();
+            } else {
+                $error = "Access denied. Admin only.";
+            }
         } else {
-
-            //success connection
-            $_SESSION["admin_id"] = $user["user_id"];
-            $_SESSION["admin_email"] = $user["email"];
-            $_SESSION["is_admin"] = true;
-
-            header("Location: adm-patient-list.php");
-            exit();
+            $error = "Invalid email or password.";
         }
+    } else {
+        $error = "Invalid email or password.";
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,9 +79,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
 
         <div class="divider"></div>
-        <a>
-          <button type="submit" name="login">LOGIN</button>
-        </a>
+          <a href="">
+              <button type="submit" name="submit">SIGN IN</button>
+          </a>
       </form>
     </div>
   </div>

@@ -33,7 +33,6 @@ body {
     width: 98%;
     margin: 1rem auto;
     padding: 2rem;
-    display: flex;
     font-style: italic;
 }
 
@@ -207,4 +206,34 @@ body {
     .content-title {
         font-size: 1.2rem;
     }
+}
+
+.signature-button {
+    width: 5rem;
+    margin-left: 0 !important;
+    display: flex;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #cdcfc1;
+    color: var(--primary);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    max-width: 100px;
+    display: block;
+    margin: 15px auto;
+}
+
+a {
+    text-decoration: none;
+
+}
+
+button:hover {
+    box-shadow: 4px 4px 0px var(--primary);
+    transform: translate(-2px, -2px);
 }
