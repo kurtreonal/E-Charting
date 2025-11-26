@@ -19,11 +19,14 @@
             <span class="bar"></span>
         </div>
         <div class="nav-links">
-            <a href="#" class="nav-item">Home</a>
+            <a href="./landingpage.php" class="nav-item">Home</a>
             <a href="#" class="nav-item">Services</a>
             <a href="#" class="nav-item">About Us</a>
             <a href="#" class="nav-item">Contact Us</a>
             <a href="./patient-profile.php" class="nav-item">Profile</a>
+            <a href="#" class="nav-item">
+                <img src="./Assets/notification.svg" alt="Notifications" class="notification-icon">
+            </a>
         </div>
     </nav>
     <script>

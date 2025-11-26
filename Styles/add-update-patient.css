@@ -352,6 +352,14 @@ body {
         grid-template-columns: 150px minmax(150px, auto) minmax(150px, 1fr);
         gap: 1rem;
     }
+
+    .signature-wrapper {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .signature-button {
+        grid-column: 1 / -1;
+    }
 }
 
 /* Mobile Responsive Design */
@@ -862,28 +870,11 @@ td .checkbox-wrapper-52 {
 }
 
 .signature-wrapper {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
     text-align: center;
     flex-wrap: wrap;
-}
-
-.signature-container {
-    margin-right: 1rem;
-    margin-left: 0rem;
-    padding-left: 3rem;
-}
-
-.signature-input {
-    width: 25rem;
-    background: transparent;
-    font-size: medium;
-    color: var(--primary);
-    border: none;
-    border-bottom: 1px solid var(--primary);
-    padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
-    text-align: center;
 }
 
 .signature-input-adm {
@@ -898,9 +889,28 @@ td .checkbox-wrapper-52 {
     text-align: center;
 }
 
+.signature-container {
+    margin-right: 0;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+.signature-input {
+    width: 100%;
+    background: transparent;
+    font-size: medium;
+    color: var(--primary);
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    text-align: center;
+}
+
 .signature-button {
-    width: 5rem;
+    width: 100%;
     margin-left: 0 !important;
+    grid-column: 1 / -1;
 }
 
 button {
@@ -912,7 +922,7 @@ button {
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s;
-    max-width: 100px;
+    max-width: 200px;
     display: block;
     margin: 15px auto;
 }
@@ -924,56 +934,21 @@ button:hover {
 
 @media (max-width: 992px) {
     .signature-wrapper {
-        flex-wrap: wrap;
-        justify-content: space-around;
-    }
-
-    .signature-container {
-        margin: 1rem;
-        padding-left: 1rem;
-    }
-
-    .signature-input {
-        width: 10rem;
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .signature-button {
-        width: 6rem;
+        grid-column: 1 / -1;
     }
 }
 
-/* Small screens (mobile phones) */
 @media (max-width: 600px) {
     .signature-wrapper {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .signature-container {
-        margin: 0.8rem 0;
-        padding-left: 0;
+        grid-template-columns: 1fr;
     }
 
     .signature-input {
-        width: 20rem;
-        font-size: 1rem;
-    }
-
-    .signature-text {
-        display: block;
-        margin-top: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    .signature-button {
-        width: 50%;
-        margin-top: 1rem;
-    }
-
-    button {
-        width: 50%;
-        max-width: none;
-        padding: 5px;
+        width: 100%;
     }
 }
 

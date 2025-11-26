@@ -160,3 +160,35 @@ body {
         display: none;
     }
 }
+
+.notification-icon {
+    width: 30px;
+    height: 30px;
+    content: url('../Assets/notification.svg');
+}
+
+.nav-item:hover .notification-icon {
+    content: url('../Assets/notification-white.svg');
+    background-color: var(--primary);
+    border-radius: 50%;
+    padding: 2px;
+    border: 1px solid var(--primary);
+    transform: translate(-2px, -2px);
+    width: 35px;
+    height: 35px;
+}
+
+.nav-item:last-child {
+    border: none;
+    padding: 0.5rem;
+    width: 48px;
+    height: 48px;
+}
+
+.nav-item:not(:last-child):hover {
+    background-color: #cdcfc1;
+    color: var(--primary);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0px #000000;
+    border: 1px solid var(--primary);
+}

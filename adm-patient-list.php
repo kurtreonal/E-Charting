@@ -1,23 +1,31 @@
 <?php
-//database connection
 include 'connection.php';
 session_start();
-//Only allow admin
-if (!isset($_SESSION["is_admin"]) || $_SESSION["is_admin"] !== true) {
+
+//Only allow nurse
+if (!isset($_SESSION["is_nurse"]) || $_SESSION["is_nurse"] !== true) {
     header("Location: admin-login.php");
     exit();
 }
 
-//get patient names from database
-$sql = "SELECT u.first_name, u.middle_name, u.last_name, p.patient_id
-        FROM patients p
-        JOIN users u ON p.user_id = u.user_id
-        ORDER BY u.first_name ASC";
+$status_filter = isset($_GET['status']) ? $_GET['status'] : null;
+
+$sql = "
+    SELECT usr.first_name, usr.middle_name, usr.last_name, p.patient_id, p.patient_status
+    FROM patients p
+    LEFT JOIN users usr ON p.user_id = usr.user_id
+";
+
+if ($status_filter) {
+    $sql .= " WHERE p.patient_status = '" . $con->real_escape_string($status_filter) . "'";
+}
+
+$sql .= " ORDER BY usr.first_name ASC";
 
 $result = $con->query($sql);
 $patients = [];
 
-if ($result->num_rows > 0) {
+if ($result && $result->num_rows > 0) {
     while($row = $result->fetch_assoc()) {
         $patients[] = $row;
     }
@@ -25,6 +33,7 @@ if ($result->num_rows > 0) {
 
 $con->close();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -51,52 +60,64 @@ $con->close();
             <!--Options to sort-->
             <div class="card-container">
                 <div class="card">
-                    <div class="card-title">
-                        In-Patient
-                    </div>
+                    <a href="adm-patient-list.php" style="text-decoration: none;">
+                        <div class="card-title <?php echo ($status_filter === null) ? 'active' : ''; ?>">
+                            All Patients
+                        </div>
+                    </a>
                 </div>
                 <div class="card">
-                    <div class="card-title">
-                        Out-Patient
-                    </div>
+                    <a href="adm-patient-list.php?status=in-patient" style="text-decoration: none;">
+                        <div class="card-title <?php echo ($status_filter === 'in-patient') ? 'active' : ''; ?>">
+                            In-Patient
+                        </div>
+                    </a>
                 </div>
                 <div class="card">
-                    <div class="card-title">
-                        New
-                    </div>
+                    <a href="adm-patient-list.php?status=out-patient" style="text-decoration: none;">
+                        <div class="card-title <?php echo ($status_filter === 'out-patient') ? 'active' : ''; ?>">
+                            Out-Patient
+                        </div>
+                    </a>
                 </div>
                 <div class="card">
-                    <div class="card-title">
-                        Old
-                    </div>
+                    <a href="adm-patient-list.php?status=active" style="text-decoration: none;">
+                        <div class="card-title <?php echo ($status_filter === 'active') ? 'active' : ''; ?>">
+                            Active
+                        </div>
+                    </a>
                 </div>
                 <div class="card">
-                    <div class="card-title">
-                        Active
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">
-                        Deceased
-                    </div>
+                    <a href="adm-patient-list.php?status=deceased" style="text-decoration: none;">
+                        <div class="card-title <?php echo ($status_filter === 'deceased') ? 'active' : ''; ?>">
+                            Deceased
+                        </div>
+                    </a>
                 </div>
             </div>
             <!--Patient List Table-->
             <table class="patient-list-table">
                 <tbody>
-                    <?php foreach($patients as $patient): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['middle_name'] . ' ' . $patient['last_name']); ?></td>
-                        <td>
-                            <a href="edit-patient.php?patient_id=<?php echo $patient['patient_id']; ?>" class="">Edit</a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
+                    <?php if (count($patients) > 0): ?>
+                        <?php foreach($patients as $patient): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($patient['first_name'] . ' ' .($patient['middle_name'] ? $patient['middle_name'] . ' ' : '' ).$patient['last_name'])?></td>
+                            <td><?php echo htmlspecialchars($patient['patient_status'] ?? 'N/A'); ?></td>
+                            <td>
+                                <a href="update-patient.php?id=<?php echo $patient['patient_id']; ?>" class="">Edit</a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 20px;">No patients found.</td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
         <div class="signature-button">
-            <form method="POST" action="./logout.php" onsubmit="return confirmLogout()">
+            <form method="POST" action="./adm-logout.php" onsubmit="return confirmLogout()">
                 <button class="logout-btn" type="submit" name="logout" id="logout">Logout</button>
             </form>
         </div>

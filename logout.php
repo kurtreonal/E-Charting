@@ -20,7 +20,7 @@ if (ini_get("session.use_cookies")) {
 }
 
 // Redirect based on user type
-if ($user_type === 'admin') {
+if ($user_type === 'nurse') {
     header("Location: admin-login.php");
 } else {
     header("Location: login.php");

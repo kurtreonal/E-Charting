@@ -9,57 +9,131 @@ if (!isset($_SESSION["is_nurse"]) || $_SESSION["is_nurse"] !== true) {
     exit();
 }
 
-// Error/success messages
+// Error / success messages
 $error = "";
 $success = "";
 $errors = [];
+$patient_data = [];
 
 // Helper to get POST values
 function p($key) {
     return isset($_POST[$key]) ? trim($_POST[$key]) : null;
 }
 
-// Ensure user_type exists, return its id
-function ensure_user_type($con, $desc) {
-    $stmt = $con->prepare("SELECT user_type_id FROM user_type WHERE user_type_desc = ?");
-    if (!$stmt) throw new Exception("Prepared statement user_type selection failed: " . $con->error);
-    $stmt->bind_param("s", $desc);
-    $stmt->execute();
-    $stmt->bind_result($utid);
-    if ($stmt->fetch()) {
-        $stmt->close();
-        return (int)$utid;
-    }
-    $stmt->close();
+// Get patient ID from URL
+$patient_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-    // Insert if not found
-    $stmt = $con->prepare("INSERT INTO user_type (user_type_desc) VALUES (?)");
-    if (!$stmt) throw new Exception("Prepare user_type insert failed: " . $con->error);
-    $stmt->bind_param("s", $desc);
-    if (!$stmt->execute()) throw new Exception("Insert user_type failed: " . $stmt->error);
-    $new_id = $stmt->insert_id;
-    $stmt->close();
-    return (int)$new_id;
+if ($patient_id === 0) {
+    $error = "Invalid Patient ID.";
+} else {
+    // Fetch patient data - FIX: JOIN with users table to get names
+    $stmt = $con->prepare("
+        SELECT
+            p.patient_id,
+            p.date_of_birth,
+            p.gender,
+            p.contact_number,
+            p.address,
+            p.patient_status,
+            n.nurse_id,
+            u.user_id,
+            u.email,
+            u.first_name,
+            u.last_name,
+            u.middle_name,
+            a.admission_date,
+            a.admission_time,
+            a.mode_of_arrival,
+            a.instructed,
+            a.glasses_or_contactlens,
+            a.dentures,
+            a.ambulatory_or_prosthesis,
+            a.smoker,
+            a.drinker,
+            h.history_date,
+            h.allergies,
+            h.duration_of_symptoms,
+            h.regular_medication,
+            h.dietary_habits,
+            h.elimination_habits,
+            h.sleep_patterns,
+            h.personal_care,
+            h.ambulation,
+            h.communication_problem,
+            h.isolation,
+            h.skin_care,
+            h.wound_care,
+            h.others,
+            pa.height,
+            pa.weight,
+            pa.bp_lft,
+            pa.pulse,
+            pa.strong,
+            pa.status,
+            pa.orientation,
+            pa.skin_color,
+            pa.skin_turgor,
+            pa.skin_temp,
+            pa.mucous_membrane,
+            pa.peripheral_sounds,
+            pa.neck_vein_distention,
+            pa.respiratory_status,
+            pa.respiratory_sounds,
+            pa.cough,
+            pa.sputum,
+            pa.temp_ranges,
+            pa.temperature
+        FROM patients p
+        LEFT JOIN users u ON p.user_id = u.user_id
+        LEFT JOIN admission_data a ON p.patient_id = a.patient_id
+        LEFT JOIN history h ON p.patient_id = h.patient_id
+        LEFT JOIN physical_assessment pa ON p.patient_id = pa.patient_id
+        LEFT JOIN nurse n ON a.nurse_id = n.nurse_id
+        WHERE p.patient_id = ?
+        LIMIT 1
+    ");
+    if (!$stmt) {
+        $error = "Prepare statement failed: " . $con->error;
+    } else {
+        $stmt->bind_param("i", $patient_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows > 0) {
+            $patient_data = $result->fetch_assoc();
+        } else {
+            $error = "Patient not found.";
+        }
+        $stmt->close();
+    }
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
     // --- Patient personal info ---
+    $first_name = p('first_name');
+    $middle_name = p('middle_name') ?: null;
+    $last_name = p('last_name');
     $date_of_birth = p('date_of_birth');
     $gender = p('gender');
     $contact_number = p('contact_number');
     $address = p('address');
-    $first_name = p('first_name');
-    $middle_name = p('middle_name') ?: null;
-    $last_name = p('last_name');
     $patient_status = p('patient_status') ?: null;
+    $email = p('email');
+    $password = p('password');
 
-    // Admission
+    // --- Admission info ---
     $admission_date = p('admission_date');
     $admission_time = p('admission_time');
+    $mode_of_arrival = p('mode_of_arrival') ?: null;
+    $instructed = p('instructed') ?: null;
+    $glasses_or_contactlens = p('glasses_contact') ?: null;
+    $dentures = p('dentures') ?: null;
+    $ambulatory_or_prosthesis = p('ambulatory') ?: null;
+    $smoker = p('smoker') ?: null;
+    $drinker = p('drinker') ?: null;
 
-    // History
+    // --- History ---
     $history_date = p('history_date');
     $allergies = p('allergies');
     $duration_of_symptoms = p('duration_of_symptoms');
@@ -67,210 +141,287 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $dietary_habits = p('dietary_habits');
     $elimination_habits = p('elimination_habits');
     $sleep_patterns = p('sleep_patterns');
+    $personal_care = p('personal-care') ?: null;
+    $ambulation = p('ambulation') ?: null;
+    $communication_problem = p('communication') ?: null;
+    $isolation = p('isolation') ?: null;
+    $skin_care = p('skin-care') ?: null;
+    $wound_care = p('wound-care') ?: null;
+    $others = p('others') ?: '';
 
-    // Physical assessment
+    // --- Physical assessment ---
     $height = p('height');
     $weight = p('weight');
     $bp_lft = p('BP_lft');
     $pulse = p('pulse');
     $strong = p('strong');
     $temp_ranges = p('temp_ranges');
-
-    // Additional physical fields
     $status = p('respiration') ?: null;
     $orientation = p('orientation') ?: null;
-    $skin_color = p('skin_color') ?: null;
-    $skin_turgor = p('skin_turgor') ?: null;
-    $skin_temp = p('skin_temp') ?: null;
-    $mucous_membrane = p('mucous_membrane') ?: null;
-    $peripheral_sounds = p('peripheral_sounds') ?: null;
-    $neck_vein_distention = p('neck_vein_distention') ?: null;
-    $respiratory_status = p('respiratory_status') ?: null;
-    $respiratory_sounds = p('respiratory_sounds') ?: null;
+    $skin_color = p('skin') ?: null;
+    $skin_turgor = p('skin-turgor') ?: null;
+    $skin_temp = p('skin-temp') ?: null;
+    $mucous_membrane = p('mucous-membrane') ?: null;
+    $peripheral_sounds = p('peripheral-sounds') ?: null;
+    $neck_vein_distention = p('neck-vein-distention') ?: null;
+    $respiratory_status = p('respiratory-status') ?: null;
+    $respiratory_sounds = p('respiratory-sounds') ?: null;
     $cough = p('cough') ?: null;
     $sputum = p('sputum') ?: null;
     $temperature = p('temperature') ?: null;
 
-    // New account fields
-    $email = p('email');
-    $password = p('password');
-
-    // --- Validations ---
+    // --- Validation ---
     if (empty($first_name)) $errors[] = "First Name is required.";
     if (empty($last_name)) $errors[] = "Last Name is required.";
     if (empty($date_of_birth)) $errors[] = "Date of Birth is required.";
     if (!empty($date_of_birth)) {
         $dob = DateTime::createFromFormat('Y-m-d', $date_of_birth);
-        if (!$dob || $dob->format('Y-m-d') !== $date_of_birth) $errors[] = "Date of Birth must be in YYYY-MM-DD format.";
+        if (!$dob || $dob->format('Y-m-d') !== $date_of_birth) {
+            $errors[] = "Date of Birth must be in YYYY-MM-DD format.";
+        }
     }
     if (empty($gender)) $errors[] = "Gender is required.";
     if (empty($address)) $errors[] = "Address is required.";
-
     if (empty($admission_date)) $errors[] = "Admission Date is required.";
     if (!empty($admission_date)) {
         $adm_date = DateTime::createFromFormat('Y-m-d', $admission_date);
-        if (!$adm_date || $adm_date->format('Y-m-d') !== $admission_date) $errors[] = "Admission Date must be in YYYY-MM-DD format.";
+        if (!$adm_date || $adm_date->format('Y-m-d') !== $admission_date) {
+            $errors[] = "Admission Date must be in YYYY-MM-DD format.";
+        }
     }
     if (empty($admission_time)) $errors[] = "Admission Time is required.";
-    if (!empty($admission_time)) {
-        $time_obj = DateTime::createFromFormat('H:i', $admission_time);
-        if (!$time_obj || $time_obj->format('H:i') !== $admission_time) $errors[] = "Admission Time must be in HH:MM format.";
+
+    // Physical numeric checks
+    foreach (['height','weight','bp_lft','pulse','strong','temp_ranges'] as $field) {
+        if (!is_numeric($$field)) $errors[] = ucfirst($field) . " must be numeric.";
     }
-
-    if (empty($history_date)) $errors[] = "History Date is required.";
-    if (empty($allergies)) $errors[] = "Allergies field is required.";
-    if (empty($duration_of_symptoms)) $errors[] = "Duration of Symptoms is required.";
-    if (empty($regular_medication)) $errors[] = "Regular Medication is required.";
-    if (empty($dietary_habits)) $errors[] = "Dietary Habits is required.";
-    if (empty($elimination_habits)) $errors[] = "Elimination Habits is required.";
-    if (empty($sleep_patterns)) $errors[] = "Sleep Patterns is required.";
-
-    if ($height === null || $height === '' || !is_numeric($height)) $errors[] = "Height is required and must be numeric.";
-    if ($weight === null || $weight === '' || !is_numeric($weight)) $errors[] = "Weight is required and must be numeric.";
-    if ($bp_lft === null || $bp_lft === '' || !is_numeric($bp_lft)) $errors[] = "BP Left is required and must be numeric.";
-    if ($pulse === null || $pulse === '' || !is_numeric($pulse)) $errors[] = "Pulse is required and must be numeric.";
-    if ($strong === null || $strong === '' || !is_numeric($strong)) $errors[] = "Strong is required and must be numeric.";
-    if ($temp_ranges === null || $temp_ranges === '' || !is_numeric($temp_ranges)) $errors[] = "Temperature is required and must be numeric.";
-
-    if (empty($email)) $errors[] = "Email is required.";
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email format is invalid.";
-    if (empty($password)) $errors[] = "Password is required.";
-    elseif (strlen($password) < 6) $errors[] = "Password must be at least 6 characters.";
 
     if (!empty($errors)) {
         $error = implode("<br>", $errors);
     } else {
         // Begin transaction
         $con->begin_transaction();
-
         try {
-            // --- 1. Ensure patient user_type exists ---
-            $user_type_id = ensure_user_type($con, 'patient');
+            $user_id = $patient_data['user_id'];
 
-            // --- 2. Check unique email ---
-            $chk = $con->prepare("SELECT user_id FROM users WHERE email = ?");
-            $chk->bind_param("s", $email);
-            $chk->execute();
-            $chk->store_result();
-            if ($chk->num_rows > 0) {
-                $chk->close();
-                throw new Exception("Email already exists. Please use a different email.");
-            }
+            // --- 1. Update users table ---
+            $stmt = $con->prepare("
+                UPDATE users
+                SET first_name = ?, middle_name = ?, last_name = ?, email = ?
+                WHERE user_id = ?
+            ");
+            if (!$stmt) throw new Exception("Prepare users update failed: " . $con->error);
+            $stmt->bind_param("ssssi", $first_name, $middle_name, $last_name, $email, $user_id);
+            if (!$stmt->execute()) throw new Exception("Update users failed: " . $stmt->error);
+            $stmt->close();
+
+            // --- 2. Update patients table ---
+            $stmt = $con->prepare("
+                UPDATE patients
+                SET date_of_birth = ?, gender = ?, contact_number = ?, address = ?, patient_status = ?
+                WHERE patient_id = ?
+            ");
+            if (!$stmt) throw new Exception("Prepare patients update failed: " . $con->error);
+            $stmt->bind_param("ssissi", $date_of_birth, $gender, $contact_number, $address, $patient_status, $patient_id);
+            if (!$stmt->execute()) throw new Exception("Update patients failed: " . $stmt->error);
+            $stmt->close();
+
+            // --- 3. Update or insert admission_data ---
+            $chk = $con->prepare("SELECT admission_data_id FROM admission_data WHERE patient_id = ?");
+            $chk->bind_param("i", $patient_id);
+            $chk->execute(); $chk->store_result();
+            $admission_exists = $chk->num_rows > 0;
             $chk->close();
 
-            // --- 3. Insert into users ---
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $con->prepare("INSERT INTO users (user_type_id, email, password, first_name, last_name, middle_name) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("isssss", $user_type_id, $email, $hashed_password, $first_name, $last_name, $middle_name);
-            $stmt->execute();
-            $user_id = $stmt->insert_id;
+            if ($admission_exists) {
+                $stmt = $con->prepare("
+                    UPDATE admission_data
+                    SET admission_date = ?, admission_time = ?, mode_of_arrival = ?, instructed = ?,
+                        glasses_or_contactlens = ?, dentures = ?, ambulatory_or_prosthesis = ?, smoker = ?, drinker = ?
+                    WHERE patient_id = ?
+                ");
+                $stmt->bind_param(
+                    "sssssssssi",
+                    $admission_date, $admission_time, $mode_of_arrival, $instructed,
+                    $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker, $patient_id
+                );
+            } else {
+                $stmt = $con->prepare("
+                    INSERT INTO admission_data (patient_id, nurse_id, admission_date, admission_time, mode_of_arrival, instructed,
+                                               glasses_or_contactlens, dentures, ambulatory_or_prosthesis, smoker, drinker, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $nurse_id = $patient_data['nurse_id'];
+                $stmt->bind_param(
+                    "iisssssssss",
+                    $patient_id, $nurse_id, $admission_date, $admission_time, $mode_of_arrival, $instructed,
+                    $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker
+                );
+            }
+            if (!$stmt->execute()) throw new Exception("Admission update/insert failed: " . $stmt->error);
             $stmt->close();
 
-            // --- 4. Insert into patients ---
-            $contact_number_val = !empty($contact_number) ? (int)$contact_number : null;
-            $stmt = $con->prepare("
-                INSERT INTO patients (user_id, date_of_birth, gender, contact_number, address, patient_status, created_date)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $stmt->bind_param("ississ", $user_id, $date_of_birth, $gender, $contact_number_val, $address, $patient_status);
-            $stmt->execute();
-            $patient_id = $stmt->insert_id;
+            // --- 4. Update or insert history ---
+            $chk = $con->prepare("SELECT history_id FROM history WHERE patient_id = ?");
+            $chk->bind_param("i", $patient_id);
+            $chk->execute(); $chk->store_result();
+            $history_exists = $chk->num_rows > 0;
+            $chk->close();
+
+            if ($history_exists) {
+                $stmt = $con->prepare("
+                    UPDATE history
+                    SET history_date = ?, allergies = ?, duration_of_symptoms = ?, regular_medication = ?,
+                        dietary_habits = ?, elimination_habits = ?, sleep_patterns = ?, personal_care = ?,
+                        ambulation = ?, communication_problem = ?, isolation = ?, skin_care = ?, wound_care = ?, others = ?
+                    WHERE patient_id = ?
+                ");
+                $stmt->bind_param(
+                    "ssssssssssssssi",
+                    $history_date, $allergies, $duration_of_symptoms, $regular_medication,
+                    $dietary_habits, $elimination_habits, $sleep_patterns, $personal_care, $ambulation,
+                    $communication_problem, $isolation, $skin_care, $wound_care, $others, $patient_id
+                );
+            } else {
+                $stmt = $con->prepare("
+                    INSERT INTO history (patient_id, nurse_id, history_date, allergies, duration_of_symptoms, regular_medication,
+                                         dietary_habits, elimination_habits, sleep_patterns, personal_care, ambulation,
+                                         communication_problem, isolation, skin_care, wound_care, others, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $nurse_id = $patient_data['nurse_id'];
+                $stmt->bind_param(
+                    "iisssssssssssss",
+                    $patient_id, $nurse_id, $history_date, $allergies, $duration_of_symptoms,
+                    $regular_medication, $dietary_habits, $elimination_habits, $sleep_patterns, $personal_care,
+                    $ambulation, $communication_problem, $isolation, $skin_care, $wound_care, $others
+                );
+            }
+            if (!$stmt->execute()) throw new Exception("History update/insert failed: " . $stmt->error);
             $stmt->close();
 
-            // --- 5. Insert into admission_data ---
-            $mode_of_arrival = p('mode_of_arrival') ?: null;
-            $instructed = p('instructed') ?: null;
-            $glasses_or_contactlens = p('glasses_contact') ?: null;
-            $dentures = p('dentures') ?: null;
-            $ambulatory_or_prosthesis = p('ambulatory') ?: null;
-            $smoker = p('smoker') ?: null;
-            $drinker = p('drinker') ?: null;
-            $nurse_id = $_SESSION['nurse_id']; // Assuming session stores current nurse ID
+            // --- 5. Update or insert physical_assessment ---
+            $height = (int)$height; $weight = (int)$weight; $bp_lft = (int)$bp_lft;
+            $pulse = (int)$pulse; $strong = (int)$strong; $temp_ranges = (int)$temp_ranges;
 
-            $stmt = $con->prepare("
-                INSERT INTO admission_data
-                (patient_id, nurse_id, admission_date, admission_time, mode_of_arrival, instructed, glasses_or_contactlens, dentures, ambulatory_or_prosthesis, smoker, drinker, created_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $stmt->bind_param("iisssssssss", $patient_id, $nurse_id, $admission_date, $admission_time, $mode_of_arrival, $instructed, $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker);
-            $stmt->execute();
+            $chk = $con->prepare("SELECT physical_assessment_id FROM physical_assessment WHERE patient_id = ?");
+            $chk->bind_param("i", $patient_id);
+            $chk->execute(); $chk->store_result();
+            $physical_exists = $chk->num_rows > 0;
+            $chk->close();
+
+            if ($physical_exists) {
+                $stmt = $con->prepare("
+                    UPDATE physical_assessment
+                    SET height = ?, weight = ?, bp_lft = ?, pulse = ?, strong = ?, status = ?, orientation = ?,
+                        skin_color = ?, skin_turgor = ?, skin_temp = ?, mucous_membrane = ?, peripheral_sounds = ?,
+                        neck_vein_distention = ?, respiratory_status = ?, respiratory_sounds = ?, cough = ?,
+                        sputum = ?, temp_ranges = ?, temperature = ?
+                    WHERE patient_id = ?
+                ");
+                $stmt->bind_param(
+                    "iiiiissssssssssssisi",
+                    $height, $weight, $bp_lft, $pulse, $strong, $status, $orientation,
+                    $skin_color, $skin_turgor, $skin_temp, $mucous_membrane, $peripheral_sounds,
+                    $neck_vein_distention, $respiratory_status, $respiratory_sounds, $cough, $sputum,
+                    $temp_ranges, $temperature, $patient_id
+                );
+            } else {
+                $stmt = $con->prepare("
+                    INSERT INTO physical_assessment (patient_id, nurse_id, height, weight, bp_lft, pulse, strong, status,
+                                                    orientation, skin_color, skin_turgor, skin_temp, mucous_membrane,
+                                                    peripheral_sounds, neck_vein_distention, respiratory_status,
+                                                    respiratory_sounds, cough, sputum, temp_ranges, temperature, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $nurse_id = $patient_data['nurse_id'];
+                $stmt->bind_param(
+                    "iiiiiisssssssssssssi",
+                    $patient_id, $nurse_id, $height, $weight, $bp_lft, $pulse, $strong,
+                    $status, $orientation, $skin_color, $skin_turgor, $skin_temp, $mucous_membrane,
+                    $peripheral_sounds, $neck_vein_distention, $respiratory_status, $respiratory_sounds,
+                    $cough, $sputum, $temp_ranges, $temperature
+                );
+            }
+            if (!$stmt->execute()) throw new Exception("Physical assessment update/insert failed: " . $stmt->error);
             $stmt->close();
 
-            // --- 6. Insert into history ---
-            $personal_care = p('personal-care') ?: null;
-            $ambulation = p('ambulation') ?: null;
-            $communication_problem = p('communication') ?: null;
-            $isolation = p('isolation') ?: null;
-            $skin_care = p('skin-care') ?: null;
-            $wound_care = p('wound-care') ?: null;
-            $others = p('others') ?: '';
-
-            $stmt = $con->prepare("
-                INSERT INTO history
-                (patient_id, nurse_id, history_date, allergies, duration_of_symptoms, regular_medication, dietary_habits, elimination_habits, sleep_patterns, personal_care, ambulation, communication_problem, isolation, skin_care, wound_care, others, created_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $stmt->bind_param(
-                "iissssssssssssss",
-                $patient_id, $nurse_id, $history_date, $allergies, $duration_of_symptoms, $regular_medication, $dietary_habits, $elimination_habits, $sleep_patterns,
-                $personal_care, $ambulation, $communication_problem, $isolation, $skin_care, $wound_care, $others
-            );
-            $stmt->execute();
-            $stmt->close();
-
-            // --- 7. Insert into physical_assessment ---
-            $height_int = (int)$height;
-            $weight_int = (int)$weight;
-            $bp_lft_int = (int)$bp_lft;
-            $pulse_int = (int)$pulse;
-            $strong_int = (int)$strong;
-            $temp_ranges_int = (int)$temp_ranges;
-
-            $stmt = $con->prepare("
-                INSERT INTO physical_assessment
-                (patient_id, nurse_id, height, weight, bp_lft, pulse, strong, status, orientation, skin_color, skin_turgor, skin_temp, mucous_membrane, peripheral_sounds, neck_vein_distention, respiratory_status, respiratory_sounds, cough, sputum, temp_ranges, temperature)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-
-            $stmt->bind_param(
-                "iiiiiisssssssssssssis",
-                $patient_id,
-                $nurse_id,
-                $height_int,
-                $weight_int,
-                $bp_lft_int,
-                $pulse_int,
-                $strong_int,
-                $status,
-                $orientation,
-                $skin_color,
-                $skin_turgor,
-                $skin_temp,
-                $mucous_membrane,
-                $peripheral_sounds,
-                $neck_vein_distention,
-                $respiratory_status,
-                $respiratory_sounds,
-                $cough,
-                $sputum,
-                $temp_ranges_int,
-                $temperature
-            );
-            $stmt->execute();
-            $stmt->close();
-
-
+            // Commit transaction
             $con->commit();
-            $success = "Patient record created successfully! Patient ID: " . $patient_id;
+            $success = "Patient record updated successfully!";
 
-            ?>
-            <script>
-                localStorage.removeItem('formData');
-                setTimeout(function() {
-                    window.location.href = 'add-patient.php';
-                }, 3000);
-            </script>
-            <?php
+            // Refresh patient data
+            $stmt = $con->prepare("
+                SELECT
+                    p.patient_id,
+                    p.date_of_birth,
+                    p.gender,
+                    p.contact_number,
+                    p.address,
+                    p.patient_status,
+                    n.nurse_id,
+                    u.user_id,
+                    u.email,
+                    u.first_name,
+                    u.last_name,
+                    u.middle_name,
+                    a.admission_date,
+                    a.admission_time,
+                    a.mode_of_arrival,
+                    a.instructed,
+                    a.glasses_or_contactlens,
+                    a.dentures,
+                    a.ambulatory_or_prosthesis,
+                    a.smoker,
+                    a.drinker,
+                    h.history_date,
+                    h.allergies,
+                    h.duration_of_symptoms,
+                    h.regular_medication,
+                    h.dietary_habits,
+                    h.elimination_habits,
+                    h.sleep_patterns,
+                    h.personal_care,
+                    h.ambulation,
+                    h.communication_problem,
+                    h.isolation,
+                    h.skin_care,
+                    h.wound_care,
+                    h.others,
+                    pa.height,
+                    pa.weight,
+                    pa.bp_lft,
+                    pa.pulse,
+                    pa.strong,
+                    pa.status,
+                    pa.orientation,
+                    pa.skin_color,
+                    pa.skin_turgor,
+                    pa.skin_temp,
+                    pa.mucous_membrane,
+                    pa.peripheral_sounds,
+                    pa.neck_vein_distention,
+                    pa.respiratory_status,
+                    pa.respiratory_sounds,
+                    pa.cough,
+                    pa.sputum,
+                    pa.temp_ranges,
+                    pa.temperature
+                FROM patients p
+                LEFT JOIN users u ON p.user_id = u.user_id
+                LEFT JOIN admission_data a ON p.patient_id = a.patient_id
+                LEFT JOIN history h ON p.patient_id = h.patient_id
+                LEFT JOIN physical_assessment pa ON p.patient_id = pa.patient_id
+                LEFT JOIN nurse n ON a.nurse_id = n.nurse_id
+                WHERE p.patient_id = ?
+                LIMIT 1
+            ");
+
+            $stmt->bind_param("i", $patient_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $patient_data = $result->fetch_assoc();
+            $stmt->close();
 
         } catch (Exception $e) {
             $con->rollback();
@@ -286,7 +437,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Patient</title>
+    <title>Update Patient</title>
     <script src="./Javascript/javascript.js" defer></script>
     <link rel="stylesheet" href="./Styles/add-update-patient.css">
 </head>
@@ -1217,7 +1368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             <div class="checkbox-wrapper-52"><label for="sputum-moderate" class="item"><input type="radio" id="sputum-moderate" name="sputum" value="moderate" class="hidden toggle-radio"/><label for="sputum-moderate" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-moderate" class="cbx-lbl">Moderate</label></label></div>
                             <div class="checkbox-wrapper-52"><label for="sputum-large" class="item"><input type="radio" id="sputum-large" name="sputum" value="large" class="hidden toggle-radio"/><label for="sputum-large" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-large" class="cbx-lbl">Large</label></label></div>
                             <div class="checkbox-wrapper-52"><label for="sputum-thin" class="item"><input type="radio" id="sputum-thin" name="sputum" value="thin" class="hidden toggle-radio"/><label for="sputum-thin" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-thin" class="cbx-lbl">Thin</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="sputum-thick" class="item"><input type="radio" id="sputum-thick" name="sputum" value="thick" class="hidden toggle-radio"/><label for="sputum-thick" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-thick" class="cbx-lbl">Thick</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="sputum-thick" class="item"><input type="radio" id="sputum-thick" name="sputum" value="thick" class="hidden toggle-radio"/><label for="sputum-thick" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-thick" class="cbx-lbl">Thick</label></label></div>
                             <div class="checkbox-wrapper-52"><label for="sputum-mucoid" class="item"><input type="radio" id="sputum-mucoid" name="sputum" value="mucoid" class="hidden toggle-radio"/><label for="sputum-mucoid" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-mucoid" class="cbx-lbl">Mucoid</label></label></div>
                             <div class="checkbox-wrapper-52"><label for="sputum-tenacious" class="item"><input type="radio" id="sputum-tenacious" name="sputum" value="tenacious" class="hidden toggle-radio"/><label for="sputum-tenacious" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-tenacious" class="cbx-lbl">Frothy Tenacious</label></label></div>
                         </td>
@@ -1275,65 +1426,150 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             <div class="signature-wrapper">
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text" id="last_name" name="last_name" required>
+                        <input class="signature-input" type="text" id="last_name" name="last_name" value="<?php echo htmlspecialchars($patient_data['last_name'] ?? ''); ?>" required>
                     </div>
                     <span class="signature-text">Last Name</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text" id="first_name" name="first_name" required>
+                        <input class="signature-input" type="text" id="first_name" name="first_name"
+                        value="<?php echo htmlspecialchars($patient_data['first_name'] ?? ''); ?>" required>
                     </div>
                     <span class="signature-text">First Name</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text" id="middle_name" name="middle_name">
+                        <input class="signature-input" type="text" id="middle_name" name="middle_name"
+                        value="<?php echo htmlspecialchars($patient_data['middle_name'] ?? ''); ?>" >
                     </div>
                     <span class="signature-text">Middle Name</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="date" id="date_of_birth" name="date_of_birth" required>
+                        <input class="signature-input" type="date" id="date_of_birth" name="date_of_birth"
+                        value="<?php echo htmlspecialchars($patient_data['date_of_birth'] ?? ''); ?>" required>
                     </div>
                     <span class="signature-text">Date of Birth</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text" id="gender" name="gender" required>
+                        <input class="signature-input" type="text" id="gender" name="gender"
+                        value="<?php echo htmlspecialchars($patient_data['gender'] ?? ''); ?>" required>
                     </div>
                     <span class="signature-text">Gender</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="number" id="contact_number" name="contact_number">
+                        <input class="signature-input" type="number" id="contact_number" name="contact_number"
+                        value="<?php echo htmlspecialchars($patient_data['contact_number'] ?? ''); ?>">
                     </div>
                     <span class="signature-text">Contact Number</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="text" id="address" name="address" required>
+                        <input class="signature-input" type="text" id="address" name="address"
+                        value="<?php echo htmlspecialchars($patient_data['address'] ?? ''); ?>" required>
                     </div>
                     <span class="signature-text">Address</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="email" id="email" name="email" required>
+                        <input class="signature-input" type="email" id="email" name="email"
+                        value="<?php echo htmlspecialchars($patient_data['email'] ?? ''); ?>" required>
                     </div>
                     <span class="signature-text">Email</span>
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="password" id="password" name="password" required>
+                        <input class="signature-input" type="password" id="password" name="password" value="" required>
                     </div>
                     <span class="signature-text">Password</span>
                 </div>
             </div>
             <div class="signature-button">
-                <button type="submit" name="save_patient" value="save" id="submitBtn">Save</button>
+                <button type="submit" name="save_patient" value="update" id="submitBtn">Update Patient</button>
             </div>
             </form>
         </div>
     </div>
     <script src="./Javascript/toggle-radio.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const data = <?php echo json_encode($patient_data); ?>;
+
+    if (Object.keys(data).length === 0) return;
+
+    // Populate patient info - use correct field names from patients table
+    const firstNameEl = document.getElementById('first_name');
+    const lastNameEl = document.getElementById('last_name');
+    const middleNameEl = document.getElementById('middle_name');
+
+    if (firstNameEl) firstNameEl.value = data.first_name || '';
+    if (lastNameEl) lastNameEl.value = data.last_name || '';
+    if (middleNameEl) middleNameEl.value = data.middle_name || '';
+
+    document.getElementById('date_of_birth').value = data.date_of_birth || '';
+    document.getElementById('gender').value = data.gender || '';
+    document.getElementById('contact_number').value = data.contact_number || '';
+    document.getElementById('address').value = data.address || '';
+    document.getElementById('email').value = data.email || '';
+    document.getElementById('admission_date').value = data.admission_date || '';
+    document.getElementById('admission_time').value = data.admission_time || '';
+    document.getElementById('history_date').value = data.history_date || '';
+    document.getElementById('allergies').value = data.allergies || '';
+    document.getElementById('duration_of_symptoms').value = data.duration_of_symptoms || '';
+    document.getElementById('regular_medication').value = data.regular_medication || '';
+    document.getElementById('dietary_habits').value = data.dietary_habits || '';
+    document.getElementById('elimination_habits').value = data.elimination_habits || '';
+    document.getElementById('sleep_patterns').value = data.sleep_patterns || '';
+
+    // Physical assessment
+    document.querySelector('input[name="height"]').value = data.height || '';
+    document.querySelector('input[name="weight"]').value = data.weight || '';
+    document.querySelector('input[name="BP_lft"]').value = data.bp_lft || '';
+    document.querySelector('input[name="pulse"]').value = data.pulse || '';
+    document.querySelector('input[name="strong"]').value = data.strong || '';
+    document.querySelector('input[name="temp_ranges"]').value = data.temp_ranges || '';
+
+    // Set radio buttons
+    const radioFields = {
+        'mode_of_arrival': data.mode_of_arrival,
+        'instructed': data.instructed,
+        'patient_status': data.patient_status,
+        'glasses_contact': data.glasses_or_contactlens,
+        'dentures': data.dentures,
+        'ambulatory': data.ambulatory_or_prosthesis,
+        'smoker': data.smoker,
+        'drinker': data.drinker,
+        'respiration': data.status,
+        'orientation': data.orientation,
+        'skin': data.skin_color,
+        'skin-turgor': data.skin_turgor,
+        'skin-temp': data.skin_temp,
+        'mucous-membrane': data.mucous_membrane,
+        'peripheral-sounds': data.peripheral_sounds,
+        'neck-vein-distention': data.neck_vein_distention,
+        'respiratory-status': data.respiratory_status,
+        'respiratory-sounds': data.respiratory_sounds,
+        'cough': data.cough,
+        'sputum': data.sputum,
+        'temperature': data.temperature,
+        'personal-care': data.personal_care,
+        'ambulation': data.ambulation,
+        'communication': data.communication_problem,
+        'isolation': data.isolation,
+        'skin-care': data.skin_care,
+        'wound-care': data.wound_care
+    };
+
+    Object.keys(radioFields).forEach(fieldName => {
+        const value = radioFields[fieldName];
+        if (value) {
+            const radio = document.querySelector(`input[name="${fieldName}"][value="${value}"]`);
+            if (radio) radio.checked = true;
+        }
+    });
+});
+    </script>
 </body>
 </html>

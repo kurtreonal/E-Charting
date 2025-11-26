@@ -1,16 +1,7 @@
 <?php
 session_start();
 
-$host = "localhost";
-$user = "root";
-$pass = "";
-$e_charting = "e_charting";
-
-$con = mysqli_connect($host, $user, $pass, $e_charting);
-
-if(mysqli_connect_errno()){
-    echo "Failed to connect to the server: MYSQL".mysqli_connect_error();
-}
+include "./connection.php";
 
 $error = "";
 
@@ -18,24 +9,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
     $email = mysqli_real_escape_string($con, $_POST["email"]);
     $password = $_POST["password"];
 
-    $query = "SELECT u.user_id, u.password, ut.user_type_desc
-              FROM users u
-              INNER JOIN user_type ut ON u.user_type_id = ut.user_type_id
-              WHERE u.email = '$email'";
+    $query = "
+    SELECT n.nurse_id, u.password, ut.user_type_desc
+    FROM nurse n
+    INNER JOIN users u ON n.user_id = u.user_id
+    INNER JOIN user_type ut ON u.user_type_id = ut.user_type_id
+    WHERE u.email = '$email'
+    ";
 
     $result = mysqli_query($con, $query);
 
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
 
-        if ($password === $row["password"]) {
-            if ($row["user_type_desc"] === "admin") {
-                $_SESSION["user_id"] = $row["user_id"];
-                $_SESSION["is_admin"] = true;
+        if ($password === $row["password"]) { // or use password_verify()
+            if ($row["user_type_desc"] === "nurse") {
+                $_SESSION["nurse_id"] = $row["nurse_id"];
+                $_SESSION["is_nurse"] = true;
                 header("Location: ./adm-patient-list.php");
                 exit();
             } else {
-                $error = "Access denied. Admin only.";
+                $error = "Access denied. Nurse only.";
             }
         } else {
             $error = "Invalid email or password.";
@@ -44,6 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
         $error = "Invalid email or password.";
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">

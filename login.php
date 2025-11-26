@@ -1,67 +1,44 @@
 <?php
 session_start();
 
-// Database connection
+include "./connection.php";
 
-include 'connection.php';
+$error = "";
 
-$error_message = "";
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
+    $email = mysqli_real_escape_string($con, $_POST["email"]);
+    $password = $_POST["password"];
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
+    $query = "
+    SELECT n.patient_id, u.password, ut.user_type_desc
+    FROM patients n
+    INNER JOIN users u ON n.user_id = u.user_id
+    INNER JOIN user_type ut ON u.user_type_id = ut.user_type_id
+    WHERE u.email = '$email'
+    ";
 
-    // Validate input
-    if (empty($email) || empty($password)) {
-        $error_message = "Email and password are required.";
-    } else {
-        // Query to get user by email
-        $sql = "SELECT u.user_id, u.password, u.first_name, u.last_name, ut.user_type_desc
-                FROM users u
-                JOIN user_type ut ON u.user_type_id = ut.user_type_id
-                WHERE u.email = ?";
+    $result = mysqli_query($con, $query);
 
-        $stmt = $con->prepare($sql);
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    if (mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
 
-        if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
-
-            // Verify password
-            if (password_verify($password, $user['password'])) {
-                // Set session variables
-                $_SESSION['user_id'] = $user['user_id'];
-                $_SESSION['user_type'] = $user['user_type_desc'];
-                $_SESSION['first_name'] = $user['first_name'];
-                $_SESSION['last_name'] = $user['last_name'];
-
-                // Redirect based on user type
-                switch ($user['user_type_desc']) {
-                    case 'admin':
-                        header("Location: ./adm-patient-list.php");
-                        break;
-                    case 'nurse':
-                        header("Location: ./dashboard/nurse_dashboard.php");
-                        break;
-                    case 'patient':
-                        header("Location: ./landingpage.php");
-                        break;
-                }
+        if (password_verify($password, $row["password"])) {
+            if ($row["user_type_desc"] === "patient") {
+                $_SESSION["patient_id"] = $row["patient_id"];
+                $_SESSION["is_patient"] = true;
+                header("Location: ./landingpage.php");
                 exit();
             } else {
-                $error_message = "Invalid email or password.";
+                $error = "Access denied! Shoo!";
             }
         } else {
-            $error_message = "Invalid email or password.";
+            $error = "Invalid email or password.";
         }
-
-        $stmt->close();
+    } else {
+        $error = "Invalid email or password.";
     }
 }
 
-$con->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
