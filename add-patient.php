@@ -1,25 +1,26 @@
 <?php
-// Database connection
+//connection
 include 'connection.php';
+session_name('nurse_session');
 session_start();
 
-// Only allow nurse
+//only nurse
 if (!isset($_SESSION["is_nurse"]) || $_SESSION["is_nurse"] !== true) {
     header("Location: admin-login.php");
     exit();
 }
 
-// Error/success messages
+//error/success messages
 $error = "";
 $success = "";
 $errors = [];
 
-// Helper to get POST values
+//helper to get POST values
 function p($key) {
     return isset($_POST[$key]) ? trim($_POST[$key]) : null;
 }
 
-// Ensure user_type exists, return its id
+//ensure user_type exists, return its id
 function ensure_user_type($con, $desc) {
     $stmt = $con->prepare("SELECT user_type_id FROM user_type WHERE user_type_desc = ?");
     if (!$stmt) throw new Exception("Prepared statement user_type selection failed: " . $con->error);
@@ -32,7 +33,7 @@ function ensure_user_type($con, $desc) {
     }
     $stmt->close();
 
-    // Insert if not found
+    //insert if not found
     $stmt = $con->prepare("INSERT INTO user_type (user_type_desc) VALUES (?)");
     if (!$stmt) throw new Exception("Prepare user_type insert failed: " . $con->error);
     $stmt->bind_param("s", $desc);
@@ -42,10 +43,8 @@ function ensure_user_type($con, $desc) {
     return (int)$new_id;
 }
 
-// --- UPDATED: New addMedication function matching your MySQL Schema ---
 function addMedication($con, $patient_id, $nurse_id, $medication_type, $medication_name, $dose, $times_per_day, $interval_minutes, $start_datetime, $date_prescribed, $notes, $updated_by) {
     try {
-        // Updated query to match new table columns
         $query = "INSERT INTO medication
                   (nurse_id, patient_id, medication_name, medication_type, dose, times_per_day, interval_minutes, start_datetime, date_prescribed, notes, updated_by)
                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -56,23 +55,21 @@ function addMedication($con, $patient_id, $nurse_id, $medication_type, $medicati
             throw new Exception("Prepare failed: " . $con->error);
         }
 
-        // 1. Handle Nullables for Integers
+        //handle Nulls for Integers
         $tpd = !empty($times_per_day) ? (int)$times_per_day : null;
         $imin = !empty($interval_minutes) ? (int)$interval_minutes : null;
 
-        // 2. Handle Date Formatting
-        // Ensure date_prescribed is full datetime. If user only gave date, append current time.
+        //handle Date Formatting
         if (strlen($date_prescribed) <= 10) {
              $prescribed_dt = $date_prescribed . " " . date('H:i:s');
         } else {
              $prescribed_dt = $date_prescribed;
         }
 
-        // Handle start_datetime (allow null)
+        //handle start_datetime (allow null)
         $start_dt = !empty($start_datetime) ? date('Y-m-d H:i:s', strtotime($start_datetime)) : null;
 
-        // 3. Bind Params
-        // types: i(int), i(int), s(str), s(str), s(str), i(int/null), i(int/null), s(str/null), s(str), s(str), i(int)
+        //Bind Params
         $stmt->bind_param("iisssiisssi",
             $nurse_id,
             $patient_id,
@@ -99,10 +96,10 @@ function addMedication($con, $patient_id, $nurse_id, $medication_type, $medicati
     }
 }
 
-// Handle form submission
+//form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
-    // --- Patient personal info ---
+    //personal info ---
     $date_of_birth = p('date_of_birth');
     $gender = p('gender');
     $contact_number = p('contact_number');
@@ -112,11 +109,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $last_name = p('last_name');
     $patient_status = p('patient_status') ?: null;
 
-    // Admission
+    //admission
     $admission_date = p('admission_date');
     $admission_time = p('admission_time');
 
-    // History
+    //history
     $history_date = p('history_date');
     $allergies = p('allergies');
     $duration_of_symptoms = p('duration_of_symptoms');
@@ -125,14 +122,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $elimination_habits = p('elimination_habits');
     $sleep_patterns = p('sleep_patterns');
 
-    // Physical assessment
+    //physical assessment
     $height = p('height');
     $weight = p('weight');
     $bp_lft = p('BP_lft');
     $pulse = p('pulse');
     $temp_ranges = p('temp_ranges');
-
-    // Additional physical fields
     $status = p('respiration') ?: null;
     $orientation = p('orientation') ?: null;
     $skin_color = p('skin_color') ?: null;
@@ -147,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $sputum = p('sputum') ?: null;
     $temperature = p('temperature') ?: null;
 
-    // New account fields
+    //new account fields
     $email = p('email');
     $password = p('password');
 
@@ -155,20 +150,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     if (empty($first_name)) $errors[] = "First Name is required.";
     if (empty($last_name)) $errors[] = "Last Name is required.";
     if (empty($date_of_birth)) $errors[] = "Date of Birth is required.";
-    // ... (rest of validations kept same as your file)
     if (empty($email)) $errors[] = "Email is required.";
 
     if (!empty($errors)) {
         $error = implode("<br>", $errors);
     } else {
-        // Begin transaction
+        //begin transaction
         $con->begin_transaction();
 
         try {
-            // --- 1. Ensure patient user_type exists ---
             $user_type_id = ensure_user_type($con, 'patient');
 
-            // --- 2. Check unique email ---
+            //check if email already exists
             $chk = $con->prepare("SELECT user_id FROM users WHERE email = ?");
             $chk->bind_param("s", $email);
             $chk->execute();
@@ -179,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             }
             $chk->close();
 
-            // --- 3. Insert into users ---
+            //inserts
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $con->prepare("INSERT INTO users (user_type_id, email, password, first_name, last_name, middle_name) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("isssss", $user_type_id, $email, $hashed_password, $first_name, $last_name, $middle_name);
@@ -187,7 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $user_id = $stmt->insert_id;
             $stmt->close();
 
-            // --- 4. Insert into patients ---
             $contact_number_val = !empty($contact_number) ? (int)$contact_number : null;
             $stmt = $con->prepare("INSERT INTO patients (user_id, date_of_birth, gender, contact_number, address, patient_status, created_date) VALUES (?, ?, ?, ?, ?, ?, NOW())");
             $stmt->bind_param("ississ", $user_id, $date_of_birth, $gender, $contact_number_val, $address, $patient_status);
@@ -195,7 +187,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $patient_id = $stmt->insert_id;
             $stmt->close();
 
-            // --- 5. Insert into admission_data ---
             $mode_of_arrival = p('mode_of_arrival') ?: null;
             $instructed = p('instructed') ?: null;
             $glasses_or_contactlens = p('glasses_contact') ?: null;
@@ -210,7 +201,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $stmt->execute();
             $stmt->close();
 
-            // --- 6. Insert into history ---
             $personal_care = p('personal-care') ?: null;
             $ambulation = p('ambulation') ?: null;
             $communication_problem = p('communication') ?: null;
@@ -224,14 +214,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $stmt->execute();
             $stmt->close();
 
-            // --- 7. Insert into physical_assessment ---
             $height_int = (int)$height;
             $weight_int = (int)$weight;
             $bp_lft_int = (int)$bp_lft;
             $pulse_int = (int)$pulse;
             $temp_ranges_int = (int)$temp_ranges;
 
-            // updated_by set to current nurse
             $updated_by_physical = $_SESSION['nurse_id'];
 
             $stmt = $con->prepare("
@@ -267,7 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $stmt->execute();
             $stmt->close();
 
-            // --- 8. UPDATED: Add medication with Time/Minute calculation fields ---
+            // add medication
             $med_calc_msg = "";
 
             if (!empty($_POST['medication_type']) && !empty($_POST['medication_name'])) {
@@ -275,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                 $med_name = htmlspecialchars($_POST['medication_name']);
                 $dose = htmlspecialchars($_POST['dose']);
 
-                // Get the new fields
+                //get the new fields
                 $times_per_day = p('times_per_day');
                 $interval_minutes = p('interval_minutes');
                 $start_datetime = p('start_datetime'); // Optional start time
@@ -288,9 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     throw new Exception("Failed to add medication record");
                 }
 
-                // --- CALCULATION CHECK ---
-                // We run a quick check to see the calculated next dose using the logic from your View
-                // This confirms the data was inserted correctly and the DB can calculate it.
+                // --- CALCULATION---
                 $calc_sql = "
                 SELECT
                     CASE

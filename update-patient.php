@@ -1,31 +1,28 @@
 <?php
-// Database connection
+//database connection
 include 'connection.php';
+session_name('nurse_session');
 session_start();
 
-// Only allow nurse
 if (!isset($_SESSION["is_nurse"]) || $_SESSION["is_nurse"] !== true) {
     header("Location: admin-login.php");
     exit();
 }
 
-// Error / success messages
 $error = "";
 $success = "";
 $errors = [];
 $patient_data = [];
 
-// Helper to get POST values
 function p($key) {
     return isset($_POST[$key]) ? trim($_POST[$key]) : null;
 }
 
-// Get patient ID from URL
 $patient_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if ($patient_id === 0) {
     $error = "Invalid Patient ID.";
-} else { // <--- This is the opening brace for line 28
+} else {
     $stmt = $con->prepare("
         SELECT
             p.patient_id,
@@ -89,8 +86,6 @@ if ($patient_id === 0) {
         WHERE p.patient_id = ?
         LIMIT 1
     ");
-
-    // Check if prepare succeeded
     if ($stmt) {
         $stmt->bind_param("i", $patient_id);
 
@@ -99,9 +94,8 @@ if ($patient_id === 0) {
         } else {
             $result = $stmt->get_result();
             if ($result->num_rows > 0) {
-                $patient_data = $result->fetch_assoc(); // Main data loaded here
+                $patient_data = $result->fetch_assoc();
 
-                // --- MEDICATION FETCHING LOGIC ---
                 if ($patient_id !== 0) {
                     $med_stmt = $con->prepare("
                         SELECT medication_id, date_prescribed, medication_type, medication_name, dose,
@@ -118,13 +112,11 @@ if ($patient_id === 0) {
                         $med_result = $med_stmt->get_result();
                         if ($med_result->num_rows > 0) {
                             $medication_data = $med_result->fetch_assoc();
-                            // Merge medication data into patient_data
                             $patient_data = array_merge($patient_data, $medication_data);
                         }
                         $med_stmt->close();
                     }
                 }
-                // --- END MEDICATION FETCHING ---
 
             } else {
                 $error = "Patient not found.";
@@ -134,9 +126,8 @@ if ($patient_id === 0) {
     } else {
         $error = "Prepare failed: " . $con->error;
     }
-} // <--- THIS is the closing brace for line 28 that was likely missing!
+}
 
-// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
     // --- Patient personal info ---
@@ -252,7 +243,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                 WHERE patient_id = ?
             ");
             if (!$stmt) throw new Exception("Prepare patients update failed: " . $con->error);
-            // Note: Changed contact_number to 's' (string) because numbers can be larger than INT max
             $stmt->bind_param("sssssi", $date_of_birth, $gender, $contact_number, $address, $patient_status, $patient_id);
             if (!$stmt->execute()) throw new Exception("Update patients failed: " . $stmt->error);
             $stmt->close();

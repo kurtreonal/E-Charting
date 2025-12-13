@@ -1,19 +1,19 @@
 <?php
 session_start();
 
-// Only allow nurse/admin logout
+//only allow nurse/admin logout
 if (!isset($_SESSION['is_nurse']) || $_SESSION['is_nurse'] !== true) {
     header("Location: login.php");
     exit();
 }
 
-// Destroy the session
+//destroy the session
 session_destroy();
 
-// Clear session data
+//clear session data
 $_SESSION = array();
 
-// Delete session cookie if it exists
+//delete session cookie
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     setcookie(session_name(), '', time() - 42000,
@@ -22,7 +22,7 @@ if (ini_get("session.use_cookies")) {
     );
 }
 
-// Redirect admin to admin login
+//redirect admin to admin login
 header("Location: admin-login.php");
 exit();
 ?>

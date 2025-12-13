@@ -1,16 +1,17 @@
 <?php
+session_name('nurse_session');
 session_start();
 include 'connection.php';
 include_once 'includes/notification.php';
 
-// require nurse login
+//require nurse login
 if (!isset($_SESSION['nurse_id'])) {
     header('Location: admin-login.php');
     exit();
 }
 $nurse_id = (int) $_SESSION['nurse_id'];
 
-// determine patient_id
+//check patient_id
 $patient_id = null;
 if (!empty($_GET['patient_id'])) {
     $patient_id = (int) $_GET['patient_id'];
@@ -24,19 +25,15 @@ if (!empty($_GET['patient_id'])) {
     }
 }
 
-// helper to fetch all assoc rows from prepared stmt
+//helper to fetch all assoc rows from prepared stmt
 function fetch_all_assoc($stmt) {
     $res = $stmt->get_result();
     if (!$res) return [];
     return $res->fetch_all(MYSQLI_ASSOC);
 }
 
-/**
- * get_or_create_notification_type_id
- * Returns notification_type_id for a given $type_name, creating it if missing.
- */
 function get_or_create_notification_type_id($con, $type_name) {
-    // attempt select
+    //attempt select
     $sql = "SELECT notification_type_id FROM notification_type WHERE notification_type = ? LIMIT 1";
     if ($stm = $con->prepare($sql)) {
         $stm->bind_param('s', $type_name);
@@ -49,7 +46,7 @@ function get_or_create_notification_type_id($con, $type_name) {
         $stm->close();
     }
 
-    // not found -> try insert
+    //if not found, insert
     $ins = "INSERT INTO notification_type (notification_type, created_date) VALUES (?, NOW())";
     if ($ins_stm = $con->prepare($ins)) {
         $ins_stm->bind_param('s', $type_name);
@@ -61,7 +58,6 @@ function get_or_create_notification_type_id($con, $type_name) {
         $ins_stm->close();
     }
 
-    // possible race condition: try select again
     if ($stm2 = $con->prepare($sql)) {
         $stm2->bind_param('s', $type_name);
         $stm2->execute();
@@ -76,11 +72,10 @@ function get_or_create_notification_type_id($con, $type_name) {
     return null;
 }
 
-// ----- Handle Create Appointment POST (if submitted on this page) -----
+//create appointment POST
 $createAppointmentError = '';
 $createAppointmentSuccess = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_appointment') {
-    // basic validation
     $appt_date = isset($_POST['appointment_date']) ? trim($_POST['appointment_date']) : '';
     $appt_time = isset($_POST['appointment_time']) ? trim($_POST['appointment_time']) : '';
     $posted_patient_id = isset($_POST['patient_id']) ? (int)$_POST['patient_id'] : 0;
@@ -93,18 +88,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } elseif (empty($appt_date) || empty($appt_time)) {
         $createAppointmentError = 'Please provide date and time for appointment.';
     } else {
-        // insert appointment
         $sql = "INSERT INTO appointment (nurse_id, patient_id, appointment_date, appointment_time) VALUES (?, ?, ?, ?)";
         if ($stmt = $con->prepare($sql)) {
             $stmt->bind_param('iiss', $nurse_id, $patient_id, $appt_date, $appt_time);
             if ($stmt->execute()) {
                 $appointment_id = $stmt->insert_id;
                 $createAppointmentSuccess = 'Appointment created successfully.';
-
-                // --- create notification_type (get or create) and insert notification targeted to the patient ---
                 $nt_id = get_or_create_notification_type_id($con, 'appointment');
                 if ($nt_id !== null) {
-                    // fetch patient name for message (optional)
                     $pstmt = $con->prepare("SELECT u.first_name, u.last_name FROM patients p JOIN users u ON p.user_id = u.user_id WHERE p.patient_id = ? LIMIT 1");
                     $patientNameText = '';
                     if ($pstmt) {
@@ -135,14 +126,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     }
                 }
 
-                // store a one-time notice for older navbar fallback (optional)
                 $_SESSION['appointment_notice'] = sprintf(
                     'New appointment on %s at %s',
                     date("F j, Y", strtotime($appt_date)),
                     date("g:i A", strtotime($appt_time))
                 );
-
-                // redirect to patient profile to avoid resubmission on refresh
                 header("Location: adm-patient-list.php?patient_id=" . $patient_id);
                 exit();
 
@@ -156,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// --- 1) Basic patient + user info ---
 $patient = null;
 $sql = "SELECT p.*, u.first_name, u.last_name, u.middle_name, u.email
         FROM patients p
@@ -173,7 +160,7 @@ if (!$patient) {
     die('Patient not found.');
 }
 
-// --- 2) Compute age ---
+//compute age
 $age = 'N/A';
 if (!empty($patient['date_of_birth']) && $patient['date_of_birth'] !== '0000-00-00') {
     $dob = new DateTime($patient['date_of_birth']);
@@ -181,8 +168,6 @@ if (!empty($patient['date_of_birth']) && $patient['date_of_birth'] !== '0000-00-
     $age = $today->diff($dob)->y;
 }
 
-// --- other data fetching (you already have below) ---
-// --- 3) Admission rows ---
 $admissionRows = [];
 $sql = "SELECT a.*,
                n.nurse_id AS admitted_nurse_id,
@@ -205,7 +190,6 @@ if (!empty($admissionRows) && !empty($admissionRows[0]['admitted_fn'])) {
     $admittedByName = trim($admissionRows[0]['admitted_fn'] . ' ' . $admissionRows[0]['admitted_ln']);
 }
 
-// --- 4) History rows ---
 $historyRows = [];
 $sql = "SELECT h.*, n.nurse_id, un.first_name AS nurse_fn, un.last_name AS nurse_ln
         FROM history h
@@ -220,7 +204,6 @@ if ($stmt = $con->prepare($sql)) {
     $stmt->close();
 }
 
-// --- 5) Physical assessment rows ---
 $physicalRows = [];
 $sql = "SELECT p.*, n.nurse_id, un.first_name AS nurse_fn, un.last_name AS nurse_ln
         FROM physical_assessment p
@@ -235,7 +218,6 @@ if ($stmt = $con->prepare($sql)) {
     $stmt->close();
 }
 
-// --- 6) Medication rows ---
 $medicationRows = [];
 $sql = "SELECT m.*, n.nurse_id, un.first_name AS nurse_fn, un.last_name AS nurse_ln
         FROM medication m
@@ -250,7 +232,6 @@ if ($stmt = $con->prepare($sql)) {
     $stmt->close();
 }
 
-// --- 7) Latest medication note ---
 $latestMedNote = null;
 $sql = "SELECT notes
         FROM medication
@@ -267,7 +248,6 @@ if ($stmt = $con->prepare($sql)) {
     $stmt->close();
 }
 
-// --- 8) Lab results ---
 $labResults = [];
 $sql = "SELECT lr.*, n.nurse_id, u.first_name AS nurse_fn, u.last_name AS nurse_ln
         FROM lab_results lr
@@ -282,7 +262,6 @@ if ($stmt = $con->prepare($sql)) {
     $stmt->close();
 }
 
-// --- 9) Upcoming appointments ---
 $appointmentRows = [];
 $sql = "SELECT a.*, n.nurse_id, u.first_name AS nurse_fn, u.last_name AS nurse_ln
         FROM appointment a
@@ -297,7 +276,6 @@ if ($stmt = $con->prepare($sql)) {
     $stmt->close();
 }
 
-// --- 10) Current logged-in nurse name ---
 $currentNurseName = '';
 $sql = "SELECT u.first_name, u.last_name FROM nurse n JOIN users u ON n.user_id = u.user_id WHERE n.nurse_id = ? LIMIT 1";
 if ($stmt = $con->prepare($sql)) {
@@ -310,7 +288,6 @@ if ($stmt = $con->prepare($sql)) {
     $stmt->close();
 }
 
-// --- helper functions for medication display ---
 function getFrequencyDisplay($m) {
     if (!empty($m['times_per_day']) && $m['times_per_day'] > 0) {
         return htmlspecialchars($m['times_per_day']) . ' time(s) per day';
@@ -370,12 +347,10 @@ function getNextIntakeTime($m) {
 <body>
     <?php include "adm-nav.php"; ?>
         <form method="post" action="">
-        <!-- hidden fields required by server-side handler -->
         <input type="hidden" name="action" value="create_appointment">
         <input type="hidden" name="patient_id" value="<?php echo htmlspecialchars($patient_id); ?>">
         <input type="hidden" name="nurse_id" value="<?php echo htmlspecialchars($nurse_id); ?>">
     <div class="wrapper">
-        <!-- show success / error messages -->
         <?php if (!empty($createAppointmentError)): ?>
             <div class="alert alert-error" role="alert" style="color:#fff;background:#d9534f;padding:10px;border-radius:6px;margin-bottom:12px;">
                 <?php echo htmlspecialchars($createAppointmentError); ?>
@@ -402,7 +377,6 @@ function getNextIntakeTime($m) {
                     <?php endif; ?>
 
                     <?php
-                        //show who last updated the admission data
                         if (!empty($admissionRows) && !empty($admissionRows[0]['updated_by'])) {
                             $lastUpdatedName = trim($admissionRows[0]['updated_fn'] . ' ' . $admissionRows[0]['updated_ln']);
                             echo '<p><strong>Last Updated by:</strong> ' . htmlspecialchars($lastUpdatedName) . '</p>';

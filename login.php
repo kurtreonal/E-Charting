@@ -2,7 +2,7 @@
 session_name('patient_session');
 session_start();
 
-// Security headers
+//security headers
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
 
@@ -11,14 +11,12 @@ include "./connection.php";
 $error_message = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
-    // Validate and sanitize input
     $email = filter_var($_POST["email"] ?? '', FILTER_SANITIZE_EMAIL);
     $password = $_POST["password"] ?? '';
-    
+
     if (empty($email) || empty($password)) {
         $error_message = "Email and password are required.";
     } else {
-        // Use prepared statements to prevent SQL injection
         $query = "
             SELECT p.patient_id, u.password, ut.user_type_desc
             FROM patients p
@@ -26,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
             INNER JOIN user_type ut ON u.user_type_id = ut.user_type_id
             WHERE u.email = ?
         ";
-        
+
         $stmt = $con->prepare($query);
         if (!$stmt) {
             $error_message = "Database error. Please try again later.";
@@ -35,18 +33,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
             $stmt->bind_param("s", $email);
             $stmt->execute();
             $result = $stmt->get_result();
-            
+
             if ($result->num_rows > 0) {
                 $row = $result->fetch_assoc();
-                
+
                 if (password_verify($password, $row["password"])) {
                     if ($row["user_type_desc"] === "patient") {
-                        // Regenerate session ID to prevent fixation
                         session_regenerate_id(true);
                         $_SESSION["patient_id"] = $row["patient_id"];
                         $_SESSION["is_patient"] = true;
                         $_SESSION["login_time"] = time();
-                        
+
                         header("Location: ./landingpage.php");
                         exit();
                     } else {

@@ -1,4 +1,5 @@
 <?php
+session_name('nurse_session');
 session_start();
 
 include "./connection.php";
@@ -22,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
 
-        if ($password === $row["password"]) { // or use password_verify()
+        if ($password === $row["password"]) {
             if ($row["user_type_desc"] === "nurse") {
                 $_SESSION["nurse_id"] = $row["nurse_id"];
                 $_SESSION["is_nurse"] = true;

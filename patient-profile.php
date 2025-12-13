@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $nid = (int) $_POST['notification_id'];
         $appt_id = (int) $_POST['appointment_id'];
 
-        // ensure the notification belongs to this patient and matches the appointment
+        //ensure the notification belongs to this patient and matches the appointment
         $chk = $con->prepare("SELECT notification_id FROM notification WHERE notification_id = ? AND patient_id = ? AND appointment_id = ? LIMIT 1");
         $chk->bind_param('iii', $nid, $patient_id, $appt_id);
         $chk->execute();
@@ -60,14 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         $chk->close();
 
-        // optional: you might want to update appointment status in a separate column if you'll add one later
-
         header("Location: patient-profile.php");
         exit();
     }
 }
-
-//query to get patient data including user info
 $sql = "
 SELECT u.first_name, u.last_name, u.middle_name, p.gender, p.date_of_birth, p.contact_number, p.address, p.patient_status
 FROM patients p

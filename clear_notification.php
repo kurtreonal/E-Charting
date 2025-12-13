@@ -1,133 +1,203 @@
 <?php
-// clear_notification.php
-session_start();
-include 'connection.php'; // ensure $con is mysqli instance
-
 header('Content-Type: application/json; charset=utf-8');
 
-// Read raw JSON body (the frontend sends JSON)
-$raw = file_get_contents('php://input');
-$body = json_decode($raw, true);
-
-// if JSON decode failed, fall back to $_POST for compatibility
-if ($body === null && !empty($_POST)) {
-    $body = $_POST;
-}
-if (!is_array($body)) $body = [];
-
-// Who is logged in?
-$is_nurse = isset($_SESSION['nurse_id']) && !empty($_SESSION['nurse_id']);
-$is_patient = isset($_SESSION['patient_id']) && !empty($_SESSION['patient_id']);
-
-if (!$is_nurse && !$is_patient) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
-    exit();
-}
+include 'connection.php';
+include_once 'includes/notification.php';
 
 try {
-    // normalize inputs
-    $mark_all_read = isset($body['mark_all_read']) ? (int)$body['mark_all_read'] : 0;
-    $notification_id = isset($body['notification_id']) ? (int)$body['notification_id'] : null;
-    $mark_read_single = isset($body['mark_read']) ? (int)$body['mark_read'] : 0;
-    $target_patient_id = isset($body['patient_id']) ? (int)$body['patient_id'] : null;
+    //referer
+    $referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
 
-    // If patient is logged in, override any provided patient_id to enforce scope
-    if ($is_patient) {
-        $session_patient = (int) $_SESSION['patient_id'];
-        $target_patient_id = $session_patient;
-    }
+    //check if call is from admin/nurse pages
+    $is_admin_page = (
+        strpos($referer, 'adm-') !== false ||
+        strpos($referer, 'admin-') !== false ||
+        strpos($referer, 'add-patient') !== false ||
+        strpos($referer, 'create-appointment') !== false ||
+        strpos($referer, 'update-patient') !== false
+    );
 
-    // 1) Mark a single notification read (if notification_id provided)
-    if ($notification_id && $mark_read_single === 1) {
-        // Build SQL so that nurse/patient session can only modify notifications they should own
-        if ($is_nurse) {
-            $nurse_id = (int) $_SESSION['nurse_id'];
-            // If a target_patient_id is provided, include it to restrict
-            if ($target_patient_id !== null) {
-                $sql = "UPDATE notification SET is_read = 1 WHERE notification_id = ? AND nurse_id = ? AND patient_id = ?";
-                $stmt = $con->prepare($sql);
-                if (!$stmt) throw new Exception('Prepare failed: ' . $con->error);
-                $stmt->bind_param('iii', $notification_id, $nurse_id, $target_patient_id);
-            } else {
-                $sql = "UPDATE notification SET is_read = 1 WHERE notification_id = ? AND nurse_id = ?";
-                $stmt = $con->prepare($sql);
-                if (!$stmt) throw new Exception('Prepare failed: ' . $con->error);
-                $stmt->bind_param('ii', $notification_id, $nurse_id);
+    //check if call is from patient pages
+    $is_patient_page = (
+        strpos($referer, 'patient-profile') !== false ||
+        strpos($referer, 'landingpage') !== false ||
+        strpos($referer, 'login.php') !== false
+    );
+
+    if ($is_admin_page && !$is_patient_page) {
+        //called from nurse/admin page
+        session_name('nurse_session');
+        session_start();
+
+        if (empty($_SESSION['nurse_id'])) {
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ]);
+            exit;
+        }
+
+        $user_id = (int)$_SESSION['nurse_id'];
+        $user_type = 'nurse';
+
+    } elseif ($is_patient_page && !$is_admin_page) {
+        //called from patient page
+        session_name('patient_session');
+        session_start();
+
+        if (empty($_SESSION['patient_id'])) {
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ]);
+            exit;
+        }
+
+        $user_id = (int)$_SESSION['patient_id'];
+        $user_type = 'patient';
+
+    } else {
+        $has_nurse_cookie = isset($_COOKIE['nurse_session']);
+        $has_patient_cookie = isset($_COOKIE['patient_session']);
+
+        if ($has_nurse_cookie && !$has_patient_cookie) {
+            session_name('nurse_session');
+            session_start();
+
+            if (empty($_SESSION['nurse_id'])) {
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Session expired'
+                ]);
+                exit;
             }
-        } else {
-            // patient
-            $session_patient = (int) $_SESSION['patient_id'];
-            $sql = "UPDATE notification SET is_read = 1 WHERE notification_id = ? AND patient_id = ?";
-            $stmt = $con->prepare($sql);
-            if (!$stmt) throw new Exception('Prepare failed: ' . $con->error);
-            $stmt->bind_param('ii', $notification_id, $session_patient);
-        }
 
-        if (!$stmt->execute()) {
-            throw new Exception('Execute failed: ' . $stmt->error);
-        }
-        $affected = $stmt->affected_rows;
-        $stmt->close();
+            $user_id = (int)$_SESSION['nurse_id'];
+            $user_type = 'nurse';
 
-        echo json_encode(['success' => true, 'action' => 'marked_single', 'affected' => $affected]);
-        exit();
-    }
+        } elseif ($has_patient_cookie && !$has_nurse_cookie) {
+            session_name('patient_session');
+            session_start();
 
-    // 2) Mark all unread read for scope
-    if ($mark_all_read === 1) {
-        if ($is_nurse) {
-            $nurse_id = (int) $_SESSION['nurse_id'];
-            if ($target_patient_id !== null) {
-                // Only mark notifications for this nurse + patient
-                $sql = "UPDATE notification SET is_read = 1 WHERE nurse_id = ? AND patient_id = ? AND is_read = 0";
-                $stmt = $con->prepare($sql);
-                if (!$stmt) throw new Exception('Prepare failed: ' . $con->error);
-                $stmt->bind_param('ii', $nurse_id, $target_patient_id);
-            } else {
-                // Mark all nurse notifications
-                $sql = "UPDATE notification SET is_read = 1 WHERE nurse_id = ? AND is_read = 0";
-                $stmt = $con->prepare($sql);
-                if (!$stmt) throw new Exception('Prepare failed: ' . $con->error);
-                $stmt->bind_param('i', $nurse_id);
+            if (empty($_SESSION['patient_id'])) {
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Session expired'
+                ]);
+                exit;
             }
+
+            $user_id = (int)$_SESSION['patient_id'];
+            $user_type = 'patient';
+
         } else {
-            // patient - mark only this patient's unread notifications
-            $session_patient = (int) $_SESSION['patient_id'];
-            $sql = "UPDATE notification SET is_read = 1 WHERE patient_id = ? AND is_read = 0";
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Ambiguous or missing session'
+            ]);
+            exit;
+        }
+    }
+
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!is_array($data)) {
+        $data = $_POST;
+    }
+
+    if (!empty($data['notification_id']) && !empty($data['mark_read'])) {
+        $notification_id = (int)$data['notification_id'];
+
+        if (mark_notification_read($con, $notification_id, $user_id, $user_type)) {
+            echo json_encode([
+                'success' => true,
+                'action' => 'marked_single'
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Failed to mark notification as read'
+            ]);
+        }
+        exit;
+    }
+
+    //handle mark all as read
+    if (!empty($data['mark_all_read'])) {
+        $target_patient_id = null;
+
+        //for nurses, check if filtering by patient
+        if ($user_type === 'nurse' && !empty($data['patient_id'])) {
+            $target_patient_id = (int)$data['patient_id'];
+        }
+
+        //build SQL based on user type
+        if ($user_type === 'patient') {
+            $sql = "UPDATE notification SET is_read = 1
+                    WHERE patient_id = ? AND is_read = 0";
             $stmt = $con->prepare($sql);
-            if (!$stmt) throw new Exception('Prepare failed: ' . $con->error);
-            $stmt->bind_param('i', $session_patient);
+            if (!$stmt) {
+                throw new Exception("Failed to prepare statement");
+            }
+            $stmt->bind_param('i', $user_id);
+        } elseif ($target_patient_id !== null) {
+            $sql = "UPDATE notification SET is_read = 1
+                    WHERE patient_id = ?
+                    AND (nurse_id = ? OR medication_id IS NOT NULL)
+                    AND is_read = 0";
+            $stmt = $con->prepare($sql);
+            if (!$stmt) {
+                throw new Exception("Failed to prepare statement");
+            }
+            $stmt->bind_param('ii', $target_patient_id, $user_id);
+        } else {
+            $sql = "UPDATE notification SET is_read = 1
+                    WHERE nurse_id = ? AND is_read = 0";
+            $stmt = $con->prepare($sql);
+            if (!$stmt) {
+                throw new Exception("Failed to prepare statement");
+            }
+            $stmt->bind_param('i', $user_id);
         }
 
-        if (!$stmt->execute()) {
-            throw new Exception('Execute failed: ' . $stmt->error);
-        }
-        $affected = $stmt->affected_rows;
-        $stmt->close();
+        if ($stmt->execute()) {
+            $affected = $stmt->affected_rows;
+            $stmt->close();
 
-        echo json_encode(['success' => true, 'action' => 'marked_all_read', 'affected' => $affected]);
-        exit();
+            echo json_encode([
+                'success' => true,
+                'action' => 'marked_all_read',
+                'affected' => $affected
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Failed to mark notifications as read'
+            ]);
+        }
+        exit;
     }
 
-    // 3) If client wants to clear appointment_notice in session (compatibility)
-    if (isset($body['clear']) && (int)$body['clear'] === 1) {
-        if (isset($_SESSION['appointment_notice'])) {
-            unset($_SESSION['appointment_notice']);
-        }
-        echo json_encode(['success' => true, 'action' => 'session_cleared']);
-        exit();
-    }
-
-    // If none matched, invalid request
+    //invalid request
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid action or missing parameters.']);
-    exit();
+    echo json_encode([
+        'success' => false,
+        'error' => 'Invalid action'
+    ]);
 
 } catch (Exception $e) {
-    error_log('clear_notification error: ' . $e->getMessage());
+    error_log("clear_notification error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Server error.']);
-    exit();
+    echo json_encode([
+        'success' => false,
+        'error' => 'Server error',
+        'message' => $e->getMessage()
+    ]);
 }
-?>
+exit;

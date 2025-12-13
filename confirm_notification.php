@@ -1,46 +1,136 @@
 <?php
-// confirm_notification.php
+header('Content-Type: application/json; charset=utf-8');
+
+session_name('patient_session');
 session_start();
-include 'connection.php'; // Ensure your database connection file is correctly included
 
-header('Content-Type: application/json');
+include 'connection.php';
+include_once 'includes/notification.php';
 
-// require nurse login and POST method
-if (!isset($_SESSION['nurse_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Unauthorized or invalid request method']);
-    exit();
-}
+try {
+    //check if user is logged in as patient
+    if (empty($_SESSION['patient_id'])) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Unauthorized - Patient login required'
+        ]);
+        exit;
+    }
 
-$nurse_id = (int) $_SESSION['nurse_id'];
+    //check request method
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Method not allowed'
+        ]);
+        exit;
+    }
 
-// read JSON body
-$input = json_decode(file_get_contents('php://input'), true);
-$notification_id = isset($input['notification_id']) ? (int)$input['notification_id'] : 0;
+    $patient_id = (int)$_SESSION['patient_id'];
 
-if ($notification_id <= 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid notification ID']);
-    exit();
-}
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
 
-// Update the notification: set is_confirmed = 1, message_status = 'confirmed', and is_read = 1
-$sql = "UPDATE notification SET is_confirmed = 1, message_status = 'confirmed', is_read = 1
-        WHERE notification_id = ? AND nurse_id = ?"; // Restrict to current nurse for security
-if ($stmt = $con->prepare($sql)) {
-    $stmt->bind_param('ii', $notification_id, $nurse_id);
-    if ($stmt->execute()) {
-        if ($stmt->affected_rows > 0) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'error' => 'Notification not found or already confirmed.']);
+    $notification_id = isset($data['notification_id']) ? (int)$data['notification_id'] : 0;
+
+    if ($notification_id <= 0) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Invalid notification ID'
+        ]);
+        exit;
+    }
+
+    //verify notification belongs to this patient
+    $check_sql = "SELECT notification_id, appointment_id
+                  FROM notification
+                  WHERE notification_id = ? AND patient_id = ?
+                  LIMIT 1";
+
+    $check_stmt = $con->prepare($check_sql);
+    if (!$check_stmt) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Database prepare failed'
+        ]);
+        exit;
+    }
+
+    $check_stmt->bind_param('ii', $notification_id, $patient_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+
+    if ($check_result->num_rows === 0) {
+        $check_stmt->close();
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Notification not found or access denied'
+        ]);
+        exit;
+    }
+
+    $notif_data = $check_result->fetch_assoc();
+    $check_stmt->close();
+
+    //update notification to confirmed
+    $update_sql = "UPDATE notification
+                   SET is_confirmed = 1,
+                       message_status = 'confirmed',
+                       is_read = 1
+                   WHERE notification_id = ?";
+
+    $update_stmt = $con->prepare($update_sql);
+    if (!$update_stmt) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Database prepare failed for update'
+        ]);
+        exit;
+    }
+
+    $update_stmt->bind_param('i', $notification_id);
+
+    if ($update_stmt->execute()) {
+        $update_stmt->close();
+
+        //update appointment status if linked
+        if (!empty($notif_data['appointment_id'])) {
+            $appt_sql = "UPDATE appointment
+                        SET appointment_status = 'confirmed'
+                        WHERE appointment_id = ?";
+            $appt_stmt = $con->prepare($appt_sql);
+            if ($appt_stmt) {
+                $appt_stmt->bind_param('i', $notif_data['appointment_id']);
+                $appt_stmt->execute();
+                $appt_stmt->close();
+            }
         }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Appointment confirmed successfully'
+        ]);
     } else {
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Database update failed.']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Failed to confirm notification'
+        ]);
     }
-    $stmt->close();
-} else {
+
+} catch (Exception $e) {
+    error_log("confirm_notification error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Failed to prepare statement.']);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Server error',
+        'message' => $e->getMessage()
+    ]);
 }
+exit;

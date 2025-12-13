@@ -1,9 +1,10 @@
 <?php
 include 'connection.php';
 include_once 'includes/notification.php';
+session_name('nurse_session');
 session_start();
 
-// get the nurse_id from session
+//get the nurse_id from session
 $nurse_id = isset($_SESSION['nurse_id']) ? $_SESSION['nurse_id'] : null;
 
 if (!$nurse_id) {

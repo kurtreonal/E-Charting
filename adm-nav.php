@@ -1,9 +1,7 @@
 <?php
-// adm-nav.php
 include 'connection.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Try to resolve a selected patient id (explicit param > post > session)
 $selected_patient_id = null;
 if (!empty($_GET['patient_id'])) {
     $selected_patient_id = (int) $_GET['patient_id'];
@@ -70,8 +68,6 @@ document.addEventListener('DOMContentLoaded', function(){
     const dot = document.getElementById('notifDot');
     const footer = document.getElementById('notificationFooter');
     const markAllBtn = document.getElementById('markAllBtn');
-
-    // embed the selected patient id (or null)
     const selectedPatientId = <?php echo $selected_patient_id !== null ? (int)$selected_patient_id : 'null'; ?>;
 
     if (!toggle) return;
@@ -116,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
             const right = document.createElement('div');
 
-            // show appointment status label (nurse view)
+            //show appointment status label (nurse view)
             if (isAppointment) {
                 const span = document.createElement('span');
                 span.style.fontWeight = 'bold';
@@ -161,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function(){
             list.innerHTML = '<div class="notification-item"><div class="notification-item-text">Loading notifications...</div></div>';
         }
         try {
-            // append patient_id when available so server filters only that patient's notifications
             let url = 'fetch_notifications.php';
             if (selectedPatientId !== null) {
                 url += '?patient_id=' + encodeURIComponent(selectedPatientId);
@@ -213,14 +208,13 @@ document.addEventListener('DOMContentLoaded', function(){
         }
     });
 
-    // mark all read (sends without patient id because server-side clear should respect session or provided patient)
+    // mark all read
     markAllBtn.addEventListener('click', async function(e){
         markAllBtn.disabled = true;
         markAllBtn.textContent = 'Reading...';
         try {
             let url = 'clear_notification.php';
             const body = { mark_all_read: 1 };
-            // include patient_id so clear_notification can clear only those notifications (if implemented server-side)
             if (selectedPatientId !== null) body.patient_id = selectedPatientId;
 
             const res = await fetch(url, {
@@ -243,10 +237,9 @@ document.addEventListener('DOMContentLoaded', function(){
         }
     });
 
-    // initial fetch (no loader)
+    // initial fetch
     fetchNotifications(false);
 
-    // poll unread count every 60s (include patient_id if available)
     setInterval(function(){
         let url = 'fetch_notifications.php';
         if (selectedPatientId !== null) url += '?patient_id=' + encodeURIComponent(selectedPatientId);
