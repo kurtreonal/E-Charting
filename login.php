@@ -1,44 +1,67 @@
 <?php
+session_name('patient_session');
 session_start();
+
+// Security headers
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
 
 include "./connection.php";
 
-$error = "";
+$error_message = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
-    $email = mysqli_real_escape_string($con, $_POST["email"]);
-    $password = $_POST["password"];
-
-    $query = "
-    SELECT n.patient_id, u.password, ut.user_type_desc
-    FROM patients n
-    INNER JOIN users u ON n.user_id = u.user_id
-    INNER JOIN user_type ut ON u.user_type_id = ut.user_type_id
-    WHERE u.email = '$email'
-    ";
-
-    $result = mysqli_query($con, $query);
-
-    if (mysqli_num_rows($result) > 0) {
-        $row = mysqli_fetch_assoc($result);
-
-        if (password_verify($password, $row["password"])) {
-            if ($row["user_type_desc"] === "patient") {
-                $_SESSION["patient_id"] = $row["patient_id"];
-                $_SESSION["is_patient"] = true;
-                header("Location: ./landingpage.php");
-                exit();
-            } else {
-                $error = "Access denied! Shoo!";
-            }
-        } else {
-            $error = "Invalid email or password.";
-        }
+    // Validate and sanitize input
+    $email = filter_var($_POST["email"] ?? '', FILTER_SANITIZE_EMAIL);
+    $password = $_POST["password"] ?? '';
+    
+    if (empty($email) || empty($password)) {
+        $error_message = "Email and password are required.";
     } else {
-        $error = "Invalid email or password.";
+        // Use prepared statements to prevent SQL injection
+        $query = "
+            SELECT p.patient_id, u.password, ut.user_type_desc
+            FROM patients p
+            INNER JOIN users u ON p.user_id = u.user_id
+            INNER JOIN user_type ut ON u.user_type_id = ut.user_type_id
+            WHERE u.email = ?
+        ";
+        
+        $stmt = $con->prepare($query);
+        if (!$stmt) {
+            $error_message = "Database error. Please try again later.";
+            error_log("Prepare failed: " . $con->error);
+        } else {
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                
+                if (password_verify($password, $row["password"])) {
+                    if ($row["user_type_desc"] === "patient") {
+                        // Regenerate session ID to prevent fixation
+                        session_regenerate_id(true);
+                        $_SESSION["patient_id"] = $row["patient_id"];
+                        $_SESSION["is_patient"] = true;
+                        $_SESSION["login_time"] = time();
+                        
+                        header("Location: ./landingpage.php");
+                        exit();
+                    } else {
+                        $error_message = "Access denied. Patient login only.";
+                    }
+                } else {
+                    $error_message = "Invalid email or password.";
+                }
+            } else {
+                $error_message = "Invalid email or password.";
+            }
+            $stmt->close();
+        }
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">

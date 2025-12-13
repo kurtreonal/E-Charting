@@ -192,7 +192,39 @@ a {
 
 }
 
-button:hover {
-    box-shadow: 4px 4px 0px var(--primary);
-    transform: translate(-2px, -2px);
+.button-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 20px;
+    border: 2px solid var(--primary);
+    border-radius: 5px;
+    background-color: transparent;
+    box-shadow: 4px 4px 0px #000000;
+    transition: all 0.3s;
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+.button-container button {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-family: "Hero New", sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.button-container button:hover {
+    outline: none;
+    box-shadow: none;
+    transform: none;
+    background-color: transparent;
+}
+
+.button-container:hover {
+    box-shadow: none;
+    transform: none;
+    background-color: transparent;
 }

@@ -111,6 +111,7 @@ body {
     font-size: 1.5rem;
     gap: 1rem;
     display: flex;
+    margin-right: 1rem;
 }
 
 .prescription-item {
@@ -232,18 +233,6 @@ body {
     }
 }
 
-.signature-button {
-    width: 5rem;
-    margin-left: 0 !important;
-    display: flex;
-}
-
-
-a {
-    text-decoration: none;
-
-}
-
 .button-container {
     display: flex;
     justify-content: center;
@@ -257,7 +246,6 @@ a {
     cursor: pointer;
     margin-top: 1rem;
 }
-
 .button-container button {
     background: none;
     border: none;
@@ -280,6 +268,12 @@ a {
     transform: none;
     background-color: transparent;
 }
+
+a {
+    text-decoration: none;
+
+}
+
 .printable-group ul {
     list-style: disc;
     margin-left: 1.2rem;
@@ -387,4 +381,29 @@ a {
 .nurse-by {
     font-size: 0.85rem;
     color: var(--text-muted, #999);
+}
+
+.frequency-input {
+    background: transparent;
+    font-size: medium;
+    color: var(--primary);
+    width: 10rem;
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    display: flex;
+}
+
+.form-group label {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
 }

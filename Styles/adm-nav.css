@@ -125,17 +125,14 @@ body {
     border: none;
     padding: 0.5rem;
     width: 48px;
-    height: 48px;
+    height: 40px;
 }
 
-.nav-item:not(:last-child):hover {
-    background-color: #cdcfc1;
-    color: var(--primary);
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0px #000000;
-    border: 1px solid var(--primary);
+.nav-item:last-child:hover {
+    box-shadow: none;
+    transform: none;
+    background-color: transparent;
 }
-
 .hamburger {
     display: none;
     cursor: pointer;
@@ -228,3 +225,146 @@ body {
         display: none;
     }
 }
+.notification-wrapper {
+  position: relative;
+  border: none;
+  padding: 0;
+  margin-left: 6px;
+}
+
+/* Notification button */
+.notification-btn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* small red dot */
+.notif-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: #e74c3c;
+  border-radius: 50%;
+  display: none;
+  box-shadow: 0 0 0 2px rgba(231,76,60,0.12);
+}
+
+/* small panel */
+.notification-box {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 490px;
+    max-width: 90vw;
+    background-color: #d8cfc5;
+    border: 1px solid rgba(66,63,62,0.08);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    padding: 6px;
+    font-size: 13px;
+    z-index: 1500;
+    display: none;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+    transform-origin: top right;
+    opacity: 0;
+    max-height: 30rem;
+    overflow-y: scroll;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+.notification-box::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* open state */
+.notification-box.open,
+.notification-box[aria-hidden="false"] {
+  display: block;
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Inner content */
+.notification-inner {
+  padding: 10px;
+  font-size: 13px;
+  color: var(--primary, #423f3e);
+  background-color: #d8cfc5;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.02);
+}
+
+/* Items */
+.notification-item {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  text-align: left;
+  display: block;
+}
+
+.notification-item.unread { font-weight: 700; }
+
+/* meta row (date + actions) */
+.notification-meta {
+  font-size: 12px;
+  color: rgba(66,63,62,0.6);
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* confirm button */
+.confirm-btn {
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #3498db;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+/* confirmed label */
+.confirmed-label {
+  color: #2ecc71;
+  font-weight: 700;
+}
+/* footer */
+.notification-footer {
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+  text-align: right;
+  display: none;
+}
+
+.mark-all-btn {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: #f3f3f3;
+  cursor: pointer;
+}
+
+/* error text */
+.notification-error {
+  color: #e74c3c;
+  padding: 8px;
+  font-size: 13px;
+}
+
+/* small accessibility focus */
+.notification-btn:focus, .confirm-btn:focus, .mark-all-btn:focus, .hamburger:focus {
+  outline: 2px solid rgba(52,152,219,0.25);
+  outline-offset: 2px;
+}
+

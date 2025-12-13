@@ -1,3 +1,33 @@
+<?php
+// landingpage.php
+session_name('patient_session');
+session_start();
+
+include_once 'includes/notification.php';
+include 'connection.php';
+
+// Prevent saved account of this page
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: Thu, 01 Jan 1970 00:00:00 GMT");
+
+// Determine logged-in patient (if any) and fetch only their notifications
+$patient_id = isset($_SESSION['patient_id']) ? (int) $_SESSION['patient_id'] : null;
+
+if ($patient_id) {
+    // Fetch last 10 notifications for the logged-in patient only
+    $notifications = fetch_notifications_for_patient($con, $patient_id, 10);
+} else {
+    // No patient logged in -> don't show patient-specific notifications.
+    // Optionally you can populate $notifications with public/global announcements instead:
+    // $notifications = fetch_all_notifications($con, 10);
+    $notifications = [];
+}
+
+// Now include nav.php which will use $notifications if present
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +38,7 @@
     <script src="./Javascript/javascript.js" defer></script>
 </head>
 <body>
-    <?php include 'nav.php'; ?>
+        <?php include "nav.php"; ?>
     <div class="main-content">
         <img src="./Assets/img1.svg" alt="hospital image" class="main-image">
         <div class="content-overlay">

@@ -25,8 +25,7 @@ $patient_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if ($patient_id === 0) {
     $error = "Invalid Patient ID.";
-} else {
-    // Fetch patient data - FIX: JOIN with users table to get names
+} else { // <--- This is the opening brace for line 28
     $stmt = $con->prepare("
         SELECT
             p.patient_id,
@@ -35,9 +34,9 @@ if ($patient_id === 0) {
             p.contact_number,
             p.address,
             p.patient_status,
-            n.nurse_id,
             u.user_id,
             u.email,
+            u.password,
             u.first_name,
             u.last_name,
             u.middle_name,
@@ -68,7 +67,6 @@ if ($patient_id === 0) {
             pa.weight,
             pa.bp_lft,
             pa.pulse,
-            pa.strong,
             pa.status,
             pa.orientation,
             pa.skin_color,
@@ -88,24 +86,55 @@ if ($patient_id === 0) {
         LEFT JOIN admission_data a ON p.patient_id = a.patient_id
         LEFT JOIN history h ON p.patient_id = h.patient_id
         LEFT JOIN physical_assessment pa ON p.patient_id = pa.patient_id
-        LEFT JOIN nurse n ON a.nurse_id = n.nurse_id
         WHERE p.patient_id = ?
         LIMIT 1
     ");
-    if (!$stmt) {
-        $error = "Prepare statement failed: " . $con->error;
-    } else {
+
+    // Check if prepare succeeded
+    if ($stmt) {
         $stmt->bind_param("i", $patient_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result->num_rows > 0) {
-            $patient_data = $result->fetch_assoc();
+
+        if (!$stmt->execute()) {
+            $error = "Execute failed: " . $stmt->error;
         } else {
-            $error = "Patient not found.";
+            $result = $stmt->get_result();
+            if ($result->num_rows > 0) {
+                $patient_data = $result->fetch_assoc(); // Main data loaded here
+
+                // --- MEDICATION FETCHING LOGIC ---
+                if ($patient_id !== 0) {
+                    $med_stmt = $con->prepare("
+                        SELECT medication_id, date_prescribed, medication_type, medication_name, dose,
+                               times_per_day, interval_minutes, start_datetime, notes
+                        FROM medication
+                        WHERE patient_id = ?
+                        ORDER BY medication_id DESC
+                        LIMIT 1
+                    ");
+
+                    if ($med_stmt) {
+                        $med_stmt->bind_param("i", $patient_id);
+                        $med_stmt->execute();
+                        $med_result = $med_stmt->get_result();
+                        if ($med_result->num_rows > 0) {
+                            $medication_data = $med_result->fetch_assoc();
+                            // Merge medication data into patient_data
+                            $patient_data = array_merge($patient_data, $medication_data);
+                        }
+                        $med_stmt->close();
+                    }
+                }
+                // --- END MEDICATION FETCHING ---
+
+            } else {
+                $error = "Patient not found.";
+            }
         }
         $stmt->close();
+    } else {
+        $error = "Prepare failed: " . $con->error;
     }
-}
+} // <--- THIS is the closing brace for line 28 that was likely missing!
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
@@ -116,11 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $last_name = p('last_name');
     $date_of_birth = p('date_of_birth');
     $gender = p('gender');
-    $contact_number = p('contact_number');
+    $contact_number = p('contact_number') ?: null;
     $address = p('address');
     $patient_status = p('patient_status') ?: null;
     $email = p('email');
-    $password = p('password');
 
     // --- Admission info ---
     $admission_date = p('admission_date');
@@ -154,7 +182,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     $weight = p('weight');
     $bp_lft = p('BP_lft');
     $pulse = p('pulse');
-    $strong = p('strong');
     $temp_ranges = p('temp_ranges');
     $status = p('respiration') ?: null;
     $orientation = p('orientation') ?: null;
@@ -192,8 +219,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
     if (empty($admission_time)) $errors[] = "Admission Time is required.";
 
     // Physical numeric checks
-    foreach (['height','weight','bp_lft','pulse','strong','temp_ranges'] as $field) {
-        if (!is_numeric($$field)) $errors[] = ucfirst($field) . " must be numeric.";
+    foreach (['height','weight','bp_lft','pulse','temp_ranges'] as $field) {
+        if (!empty($$field) && !is_numeric($$field)) {
+            $errors[] = ucfirst($field) . " must be numeric.";
+        }
     }
 
     if (!empty($errors)) {
@@ -203,6 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
         $con->begin_transaction();
         try {
             $user_id = $patient_data['user_id'];
+            $current_nurse_id = $_SESSION['nurse_id'] ?? null;
 
             // --- 1. Update users table ---
             $stmt = $con->prepare("
@@ -222,14 +252,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                 WHERE patient_id = ?
             ");
             if (!$stmt) throw new Exception("Prepare patients update failed: " . $con->error);
-            $stmt->bind_param("ssissi", $date_of_birth, $gender, $contact_number, $address, $patient_status, $patient_id);
+            // Note: Changed contact_number to 's' (string) because numbers can be larger than INT max
+            $stmt->bind_param("sssssi", $date_of_birth, $gender, $contact_number, $address, $patient_status, $patient_id);
             if (!$stmt->execute()) throw new Exception("Update patients failed: " . $stmt->error);
             $stmt->close();
 
             // --- 3. Update or insert admission_data ---
-            $chk = $con->prepare("SELECT admission_data_id FROM admission_data WHERE patient_id = ?");
+            $chk = $con->prepare("SELECT admission_data_id FROM admission_data WHERE patient_id = ? LIMIT 1");
             $chk->bind_param("i", $patient_id);
-            $chk->execute(); $chk->store_result();
+            $chk->execute();
+            $chk->store_result();
             $admission_exists = $chk->num_rows > 0;
             $chk->close();
 
@@ -237,34 +269,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                 $stmt = $con->prepare("
                     UPDATE admission_data
                     SET admission_date = ?, admission_time = ?, mode_of_arrival = ?, instructed = ?,
-                        glasses_or_contactlens = ?, dentures = ?, ambulatory_or_prosthesis = ?, smoker = ?, drinker = ?
+                        glasses_or_contactlens = ?, dentures = ?, ambulatory_or_prosthesis = ?, smoker = ?, drinker = ?,
+                        updated_by = ?, updated_date = NOW()
                     WHERE patient_id = ?
                 ");
                 $stmt->bind_param(
-                    "sssssssssi",
+                    "sssssssssii",
                     $admission_date, $admission_time, $mode_of_arrival, $instructed,
-                    $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker, $patient_id
+                    $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker,
+                    $current_nurse_id, $patient_id
                 );
             } else {
                 $stmt = $con->prepare("
-                    INSERT INTO admission_data (patient_id, nurse_id, admission_date, admission_time, mode_of_arrival, instructed,
-                                               glasses_or_contactlens, dentures, ambulatory_or_prosthesis, smoker, drinker, created_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO admission_data
+                    (patient_id, nurse_id, admission_date, admission_time, mode_of_arrival, instructed,
+                     glasses_or_contactlens, dentures, ambulatory_or_prosthesis, smoker, drinker, updated_by, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
-                $nurse_id = $patient_data['nurse_id'];
                 $stmt->bind_param(
-                    "iisssssssss",
-                    $patient_id, $nurse_id, $admission_date, $admission_time, $mode_of_arrival, $instructed,
-                    $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker
+                    "iissssssssi",
+                    $patient_id, $current_nurse_id, $admission_date, $admission_time, $mode_of_arrival, $instructed,
+                    $glasses_or_contactlens, $dentures, $ambulatory_or_prosthesis, $smoker, $drinker, $current_nurse_id
                 );
             }
             if (!$stmt->execute()) throw new Exception("Admission update/insert failed: " . $stmt->error);
             $stmt->close();
 
             // --- 4. Update or insert history ---
-            $chk = $con->prepare("SELECT history_id FROM history WHERE patient_id = ?");
+            $chk = $con->prepare("SELECT history_id FROM history WHERE patient_id = ? LIMIT 1");
             $chk->bind_param("i", $patient_id);
-            $chk->execute(); $chk->store_result();
+            $chk->execute();
+            $chk->store_result();
             $history_exists = $chk->num_rows > 0;
             $chk->close();
 
@@ -273,155 +308,184 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     UPDATE history
                     SET history_date = ?, allergies = ?, duration_of_symptoms = ?, regular_medication = ?,
                         dietary_habits = ?, elimination_habits = ?, sleep_patterns = ?, personal_care = ?,
-                        ambulation = ?, communication_problem = ?, isolation = ?, skin_care = ?, wound_care = ?, others = ?
+                        ambulation = ?, communication_problem = ?, isolation = ?, skin_care = ?, wound_care = ?,
+                        others = ?, updated_by = ?, updated_date = NOW()
                     WHERE patient_id = ?
                 ");
                 $stmt->bind_param(
-                    "ssssssssssssssi",
-                    $history_date, $allergies, $duration_of_symptoms, $regular_medication,
-                    $dietary_habits, $elimination_habits, $sleep_patterns, $personal_care, $ambulation,
-                    $communication_problem, $isolation, $skin_care, $wound_care, $others, $patient_id
-                );
+                "ssssssssssssssii",
+                $history_date, $allergies, $duration_of_symptoms, $regular_medication,
+                $dietary_habits, $elimination_habits, $sleep_patterns, $personal_care, $ambulation,
+                $communication_problem, $isolation, $skin_care, $wound_care, $others, $current_nurse_id, $patient_id
+            );
             } else {
                 $stmt = $con->prepare("
-                    INSERT INTO history (patient_id, nurse_id, history_date, allergies, duration_of_symptoms, regular_medication,
-                                         dietary_habits, elimination_habits, sleep_patterns, personal_care, ambulation,
-                                         communication_problem, isolation, skin_care, wound_care, others, created_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO history
+                    (patient_id, nurse_id, history_date, allergies, duration_of_symptoms, regular_medication,
+                    dietary_habits, elimination_habits, sleep_patterns, personal_care, ambulation,
+                    communication_problem, isolation, skin_care, wound_care, others, updated_by, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
-                $nurse_id = $patient_data['nurse_id'];
                 $stmt->bind_param(
-                    "iisssssssssssss",
-                    $patient_id, $nurse_id, $history_date, $allergies, $duration_of_symptoms,
+                    "iissssssssssssssi",
+                    $patient_id, $current_nurse_id, $history_date, $allergies, $duration_of_symptoms,
                     $regular_medication, $dietary_habits, $elimination_habits, $sleep_patterns, $personal_care,
-                    $ambulation, $communication_problem, $isolation, $skin_care, $wound_care, $others
+                    $ambulation, $communication_problem, $isolation, $skin_care, $wound_care, $others, $current_nurse_id
                 );
             }
             if (!$stmt->execute()) throw new Exception("History update/insert failed: " . $stmt->error);
             $stmt->close();
 
             // --- 5. Update or insert physical_assessment ---
-            $height = (int)$height; $weight = (int)$weight; $bp_lft = (int)$bp_lft;
-            $pulse = (int)$pulse; $strong = (int)$strong; $temp_ranges = (int)$temp_ranges;
+            $height = (int)$height;
+            $weight = (int)$weight;
+            $bp_lft = (int)$bp_lft;
+            $pulse = (int)$pulse;
+            $temp_ranges = (int)$temp_ranges;
 
-            $chk = $con->prepare("SELECT physical_assessment_id FROM physical_assessment WHERE patient_id = ?");
+            $chk = $con->prepare("SELECT physical_assessment_id FROM physical_assessment WHERE patient_id = ? LIMIT 1");
             $chk->bind_param("i", $patient_id);
-            $chk->execute(); $chk->store_result();
+            $chk->execute();
+            $chk->store_result();
             $physical_exists = $chk->num_rows > 0;
             $chk->close();
 
             if ($physical_exists) {
                 $stmt = $con->prepare("
                     UPDATE physical_assessment
-                    SET height = ?, weight = ?, bp_lft = ?, pulse = ?, strong = ?, status = ?, orientation = ?,
+                    SET height = ?, weight = ?, bp_lft = ?, pulse = ?, status = ?, orientation = ?,
                         skin_color = ?, skin_turgor = ?, skin_temp = ?, mucous_membrane = ?, peripheral_sounds = ?,
                         neck_vein_distention = ?, respiratory_status = ?, respiratory_sounds = ?, cough = ?,
-                        sputum = ?, temp_ranges = ?, temperature = ?
+                        sputum = ?, temp_ranges = ?, temperature = ?, updated_by = ?, updated_date = NOW()
                     WHERE patient_id = ?
                 ");
                 $stmt->bind_param(
-                    "iiiiissssssssssssisi",
-                    $height, $weight, $bp_lft, $pulse, $strong, $status, $orientation,
-                    $skin_color, $skin_turgor, $skin_temp, $mucous_membrane, $peripheral_sounds,
-                    $neck_vein_distention, $respiratory_status, $respiratory_sounds, $cough, $sputum,
-                    $temp_ranges, $temperature, $patient_id
-                );
+                "iiiissssssssssssisii",
+                $height, $weight, $bp_lft, $pulse, $status, $orientation,
+                $skin_color, $skin_turgor, $skin_temp, $mucous_membrane, $peripheral_sounds,
+                $neck_vein_distention, $respiratory_status, $respiratory_sounds, $cough, $sputum,
+                $temp_ranges, $temperature, $current_nurse_id, $patient_id
+            );
             } else {
                 $stmt = $con->prepare("
-                    INSERT INTO physical_assessment (patient_id, nurse_id, height, weight, bp_lft, pulse, strong, status,
-                                                    orientation, skin_color, skin_turgor, skin_temp, mucous_membrane,
-                                                    peripheral_sounds, neck_vein_distention, respiratory_status,
-                                                    respiratory_sounds, cough, sputum, temp_ranges, temperature, created_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO physical_assessment
+                    (patient_id, nurse_id, height, weight, bp_lft, pulse, status,
+                     orientation, skin_color, skin_turgor, skin_temp, mucous_membrane,
+                     peripheral_sounds, neck_vein_distention, respiratory_status,
+                     respiratory_sounds, cough, sputum, temp_ranges, temperature, updated_by, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
-                $nurse_id = $patient_data['nurse_id'];
                 $stmt->bind_param(
-                    "iiiiiisssssssssssssi",
-                    $patient_id, $nurse_id, $height, $weight, $bp_lft, $pulse, $strong,
-                    $status, $orientation, $skin_color, $skin_turgor, $skin_temp, $mucous_membrane,
-                    $peripheral_sounds, $neck_vein_distention, $respiratory_status, $respiratory_sounds,
-                    $cough, $sputum, $temp_ranges, $temperature
-                );
+                "iiiiiissssssssssssisii",
+                $patient_id, $current_nurse_id, $height, $weight, $bp_lft, $pulse,
+                $status, $orientation, $skin_color, $skin_turgor, $skin_temp, $mucous_membrane,
+                $peripheral_sounds, $neck_vein_distention, $respiratory_status, $respiratory_sounds,
+                $cough, $sputum, $temp_ranges, $temperature, $current_nurse_id
+            );
             }
             if (!$stmt->execute()) throw new Exception("Physical assessment update/insert failed: " . $stmt->error);
             $stmt->close();
+
+            // --- 6. Update or insert medication ---
+            if (!empty($_POST['medication_type']) && !empty($_POST['medication_name'])) {
+                $med_type = $_POST['medication_type'];
+                $med_name = $_POST['medication_name'];
+                $dose = $_POST['dose'];
+                $times_per_day = !empty($_POST['times_per_day']) ? (int)$_POST['times_per_day'] : null;
+                $interval_minutes = !empty($_POST['interval_minutes']) ? (int)$_POST['interval_minutes'] : null;
+                $start_datetime = !empty($_POST['start_datetime']) ? $_POST['start_datetime'] : null;
+                $date_prescribed = $_POST['date_prescribed'];
+                $notes = $_POST['notes'];
+
+                // Check if medication exists for this patient
+                $chk = $con->prepare("SELECT medication_id FROM medication WHERE patient_id = ? ORDER BY medication_id DESC LIMIT 1");
+                $chk->bind_param("i", $patient_id);
+                $chk->execute();
+                $chk->store_result();
+                $medication_exists = $chk->num_rows > 0;
+                $med_id = null;
+                if ($medication_exists) {
+                    $chk->bind_result($med_id);
+                    $chk->fetch();
+                }
+                $chk->close();
+
+                if ($medication_exists && $med_id) {
+                    // Update existing medication
+                    $stmt = $con->prepare("
+                        UPDATE medication
+                        SET medication_type = ?, medication_name = ?, dose = ?, times_per_day = ?,
+                            interval_minutes = ?, start_datetime = ?, date_prescribed = ?, notes = ?,
+                            updated_by = ?, updated_date = NOW()
+                        WHERE medication_id = ?
+                    ");
+                    $prescribed_datetime = $date_prescribed . " " . date('H:i:s');
+                    $stmt->bind_param(
+                        "ssisssssii",
+                        $med_type, $med_name, $dose, $times_per_day, $interval_minutes,
+                        $start_datetime, $prescribed_datetime, $notes, $current_nurse_id, $med_id
+                    );
+                } else {
+                    // Insert new medication
+                    $stmt = $con->prepare("
+                        INSERT INTO medication
+                        (patient_id, nurse_id, medication_type, medication_name, dose,
+                         times_per_day, interval_minutes, start_datetime, date_prescribed,
+                         notes, updated_by, created_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    ");
+                    $prescribed_datetime = $date_prescribed . " " . date('H:i:s');
+                    $stmt->bind_param(
+                        "iississssi",
+                        $patient_id, $current_nurse_id, $med_type, $med_name, $times_per_day,
+                        $interval_minutes, $start_datetime, $prescribed_datetime, $notes, $current_nurse_id
+                    );
+                }
+                if (!$stmt->execute()) throw new Exception("Medication update/insert failed: " . $stmt->error);
+                $stmt->close();
+            }
 
             // Commit transaction
             $con->commit();
             $success = "Patient record updated successfully!";
 
-            // Refresh patient data
+            // Refresh patient data after successful update
             $stmt = $con->prepare("
                 SELECT
-                    p.patient_id,
-                    p.date_of_birth,
-                    p.gender,
-                    p.contact_number,
-                    p.address,
-                    p.patient_status,
-                    n.nurse_id,
-                    u.user_id,
-                    u.email,
-                    u.first_name,
-                    u.last_name,
-                    u.middle_name,
-                    a.admission_date,
-                    a.admission_time,
-                    a.mode_of_arrival,
-                    a.instructed,
-                    a.glasses_or_contactlens,
-                    a.dentures,
-                    a.ambulatory_or_prosthesis,
-                    a.smoker,
-                    a.drinker,
-                    h.history_date,
-                    h.allergies,
-                    h.duration_of_symptoms,
-                    h.regular_medication,
-                    h.dietary_habits,
-                    h.elimination_habits,
-                    h.sleep_patterns,
-                    h.personal_care,
-                    h.ambulation,
-                    h.communication_problem,
-                    h.isolation,
-                    h.skin_care,
-                    h.wound_care,
-                    h.others,
-                    pa.height,
-                    pa.weight,
-                    pa.bp_lft,
-                    pa.pulse,
-                    pa.strong,
-                    pa.status,
-                    pa.orientation,
-                    pa.skin_color,
-                    pa.skin_turgor,
-                    pa.skin_temp,
-                    pa.mucous_membrane,
-                    pa.peripheral_sounds,
-                    pa.neck_vein_distention,
-                    pa.respiratory_status,
-                    pa.respiratory_sounds,
-                    pa.cough,
-                    pa.sputum,
-                    pa.temp_ranges,
-                    pa.temperature
+                    p.patient_id, p.date_of_birth, p.gender, p.contact_number, p.address, p.patient_status,
+                    u.user_id, u.email, u.password, u.first_name, u.last_name, u.middle_name,
+                    a.admission_date, a.admission_time, a.mode_of_arrival, a.instructed, a.glasses_or_contactlens,
+                    a.dentures, a.ambulatory_or_prosthesis, a.smoker, a.drinker,
+                    h.history_date, h.allergies, h.duration_of_symptoms, h.regular_medication, h.dietary_habits,
+                    h.elimination_habits, h.sleep_patterns, h.personal_care, h.ambulation, h.communication_problem,
+                    h.isolation, h.skin_care, h.wound_care, h.others,
+                    pa.height, pa.weight, pa.bp_lft, pa.pulse, pa.status, pa.orientation,
+                    pa.skin_color, pa.skin_turgor, pa.skin_temp, pa.mucous_membrane, pa.peripheral_sounds,
+                    pa.neck_vein_distention, pa.respiratory_status, pa.respiratory_sounds, pa.cough,
+                    pa.sputum, pa.temp_ranges, pa.temperature
                 FROM patients p
                 LEFT JOIN users u ON p.user_id = u.user_id
                 LEFT JOIN admission_data a ON p.patient_id = a.patient_id
                 LEFT JOIN history h ON p.patient_id = h.patient_id
                 LEFT JOIN physical_assessment pa ON p.patient_id = pa.patient_id
-                LEFT JOIN nurse n ON a.nurse_id = n.nurse_id
                 WHERE p.patient_id = ?
                 LIMIT 1
             ");
-
             $stmt->bind_param("i", $patient_id);
             $stmt->execute();
             $result = $stmt->get_result();
             $patient_data = $result->fetch_assoc();
             $stmt->close();
+
+            ?>
+            <script>
+                localStorage.removeItem('formData');
+                setTimeout(function() {
+                    window.location.href = 'adm-patient-list.php';
+                }, 2000); //time for message read
+            </script>
+            <?php
+
 
         } catch (Exception $e) {
             $con->rollback();
@@ -429,8 +493,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
         }
     }
 }
-?>
 
+// Helper function to safely output form values
+function getFormValue($key, $default = '') {
+    global $patient_data;
+    return htmlspecialchars($patient_data[$key] ?? $default);
+}
+
+// Helper function to check radio/checkbox state
+function isChecked($field, $value) {
+    global $patient_data;
+    return ($patient_data[$field] ?? null) === $value ? 'checked' : '';
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -468,19 +543,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     <div class="datetime-wrapper">
                         <div class="form-group">
                             <label for="admission_date">Date:</label>
-                            <input class="signature-input-adm" type="date" id="admission_date" name="admission_date" required>
+                            <input class="signature-input-adm" type="date" id="admission_date" name="admission_date" value="<?php echo getFormValue('admission_date'); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="admission_time">Time:</label>
-                            <input class="signature-input-adm" type="time" id="admission_time" name="admission_time" required>
+                            <input class="signature-input-adm" type="time" id="admission_time" name="admission_time" value="<?php echo getFormValue('admission_time'); ?>" required>
                         </div>
                     </div>
+
                     <div class="form-group">
                         <span>Mode of Arrival</span>
                         <div class="radio-group">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="wheelchair" class="item">
-                                    <input type="radio" id="wheelchair" name="mode_of_arrival" value="wheelchair" class="hidden toggle-radio"/>
+                                    <input type="radio" id="wheelchair" name="mode_of_arrival" value="wheelchair" class="hidden toggle-radio" <?php echo isChecked('mode_of_arrival', 'wheelchair'); ?>/>
                                     <label for="wheelchair" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -492,7 +568,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="stretcher" class="item">
-                                    <input type="radio" id="stretcher" name="mode_of_arrival" value="stretcher" class="hidden toggle-radio"/>
+                                    <input type="radio" id="stretcher" name="mode_of_arrival" value="stretcher" class="hidden toggle-radio" <?php echo isChecked('mode_of_arrival', 'stretcher'); ?>/>
                                     <label for="stretcher" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -503,12 +579,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                         </div>
                     </div>
+
                     <div class="form-group">
                         <span>Patient and Family Instructed</span>
                         <div class="radio-group">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="wardset" class="item">
-                                    <input type="radio" id="wardset" name="instructed" value="wardset" class="hidden toggle-radio"/>
+                                    <input type="radio" id="wardset" name="instructed" value="wardset" class="hidden toggle-radio" <?php echo isChecked('instructed', 'wardset'); ?>/>
                                     <label for="wardset" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -519,20 +596,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
-                                <label for="medication" class="item">
-                                    <input type="radio" id="medication" name="instructed" value="medication" class="hidden toggle-radio"/>
-                                    <label for="medication" class="cbx">
+                                <label for="medication-inst" class="item">
+                                    <input type="radio" id="medication-inst" name="instructed" value="medication" class="hidden toggle-radio" <?php echo isChecked('instructed', 'medication'); ?>/>
+                                    <label for="medication-inst" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
                                         </svg>
                                     </label>
-                                    <label for="medication" class="cbx-lbl">Medication</label>
+                                    <label for="medication-inst" class="cbx-lbl">Medication</label>
                                 </label>
                             </div>
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="hospital-rules" class="item">
-                                    <input type="radio" id="hospital-rules" name="instructed" value="hospital-rules" class="hidden toggle-radio"/>
+                                    <input type="radio" id="hospital-rules" name="instructed" value="hospital-rules" class="hidden toggle-radio" <?php echo isChecked('instructed', 'hospital-rules'); ?>/>
                                     <label for="hospital-rules" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -544,7 +621,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="special" class="item">
-                                    <input type="radio" id="special" name="instructed" value="special" class="hidden toggle-radio"/>
+                                    <input type="radio" id="special" name="instructed" value="special" class="hidden toggle-radio" <?php echo isChecked('instructed', 'special'); ?>/>
                                     <label for="special" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -555,24 +632,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                         </div>
                     </div>
+
                     <div class="form-group">
                         <span>Patient Status</span>
                         <div class="radio-group">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="out-patient" class="item">
-                                    <input type="radio" id="out-patient" name="patient_status" value="out-patient" class="hidden toggle-radio"/>
+                                    <input type="radio" id="out-patient" name="patient_status" value="out-patient" class="hidden toggle-radio" <?php echo isChecked('patient_status', 'out-patient'); ?>/>
                                     <label for="out-patient" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
                                         </svg>
                                     </label>
-                                    <label for="wout-patient" class="cbx-lbl">Out-patient</label>
+                                    <label for="out-patient" class="cbx-lbl">Out-patient</label>
                                 </label>
                             </div>
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="in-patient" class="item">
-                                    <input type="radio" id="in-patient" name="patient_status" value="in-patient" class="hidden toggle-radio"/>
+                                    <input type="radio" id="in-patient" name="patient_status" value="in-patient" class="hidden toggle-radio" <?php echo isChecked('patient_status', 'in-patient'); ?>/>
                                     <label for="in-patient" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -584,7 +662,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="active" class="item">
-                                    <input type="radio" id="active" name="patient_status" value="active" class="hidden toggle-radio"/>
+                                    <input type="radio" id="active" name="patient_status" value="active" class="hidden toggle-radio" <?php echo isChecked('patient_status', 'active'); ?>/>
                                     <label for="active" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -596,7 +674,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="deceased" class="item">
-                                    <input type="radio" id="deceased" name="patient_status" value="deceased" class="hidden toggle-radio"/>
+                                    <input type="radio" id="deceased" name="patient_status" value="deceased" class="hidden toggle-radio" <?php echo isChecked('patient_status', 'deceased'); ?>/>
                                     <label for="deceased" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -608,13 +686,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         </div>
                     </div>
                 </div>
+
                 <div class="side-form-section">
                     <div class="form-group">
                         <span>Glasses/Contact Lenses</span>
                         <div class="radio-options">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="glasses-yes" class="item">
-                                    <input type="radio" id="glasses-yes" name="glasses_contact" value="yes" />
+                                    <input type="radio" id="glasses-yes" name="glasses_contact" value="yes" <?php echo isChecked('glasses_or_contactlens', 'yes'); ?> />
                                     <label for="glasses-yes" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -625,7 +704,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="glasses-no" class="item">
-                                    <input type="radio" id="glasses-no" name="glasses_contact" value="no" />
+                                    <input type="radio" id="glasses-no" name="glasses_contact" value="no" <?php echo isChecked('glasses_or_contactlens', 'no'); ?> />
                                     <label for="glasses-no" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -642,7 +721,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <div class="radio-options">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="dentures-yes" class="item">
-                                    <input type="radio" id="dentures-yes" name="dentures" value="yes" />
+                                    <input type="radio" id="dentures-yes" name="dentures" value="yes" <?php echo isChecked('dentures', 'yes'); ?> />
                                     <label for="dentures-yes" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -653,7 +732,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="dentures-no" class="item">
-                                    <input type="radio" id="dentures-no" name="dentures" value="no" />
+                                    <input type="radio" id="dentures-no" name="dentures" value="no" <?php echo isChecked('dentures', 'no'); ?> />
                                     <label for="dentures-no" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -670,7 +749,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <div class="radio-options">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="ambulatory-yes" class="item">
-                                    <input type="radio" id="ambulatory-yes" name="ambulatory" value="yes"/>
+                                    <input type="radio" id="ambulatory-yes" name="ambulatory" value="yes" <?php echo isChecked('ambulatory_or_prosthesis', 'yes'); ?> />
                                     <label for="ambulatory-yes" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -681,7 +760,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="ambulatory-no" class="item">
-                                    <input type="radio" id="ambulatory-no" name="ambulatory" value="no" />
+                                    <input type="radio" id="ambulatory-no" name="ambulatory" value="no" <?php echo isChecked('ambulatory_or_prosthesis', 'no'); ?> />
                                     <label for="ambulatory-no" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -698,7 +777,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <div class="radio-options">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="smoker-yes" class="item">
-                                    <input type="radio" id="smoker-yes" name="smoker" value="yes"/>
+                                    <input type="radio" id="smoker-yes" name="smoker" value="yes" <?php echo isChecked('smoker', 'yes'); ?> />
                                     <label for="smoker-yes" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -709,7 +788,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="smoker-no" class="item">
-                                    <input type="radio" id="smoker-no" name="smoker" value="no" />
+                                    <input type="radio" id="smoker-no" name="smoker" value="no" <?php echo isChecked('smoker', 'no'); ?> />
                                     <label for="smoker-no" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -726,7 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <div class="radio-options">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="drinker-yes" class="item">
-                                    <input type="radio" id="drinker-yes" name="drinker" value="yes" />
+                                    <input type="radio" id="drinker-yes" name="drinker" value="yes" <?php echo isChecked('drinker', 'yes'); ?> />
                                     <label for="drinker-yes" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -737,7 +816,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                 <label for="drinker-no" class="item">
-                                    <input type="radio" id="drinker-no" name="drinker" value="no" />
+                                    <input type="radio" id="drinker-no" name="drinker" value="no" <?php echo isChecked('drinker', 'no'); ?> />
                                     <label for="drinker-no" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -750,6 +829,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     </div>
                 </div>
             </div>
+
             <div class="header-section">
                 <h3>NURSING HISTORY</h3>
             </div>
@@ -760,43 +840,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <div class="history-input-wrapper">
                             <div class="form-group">
                                 <label for="history_date">Date:</label>
-                                <input class="signature-input-adm" type="date" id="history_date" name="history_date" value="" required>
+                                <input class="signature-input-adm" type="date" id="history_date" name="history_date" value="<?php echo !empty($patient_data['history_date']) ? date('Y-m-d', strtotime($patient_data['history_date'])) : ''; ?>" required>
                             </div>
                             <div class="form-group">
                                 <label for="allergies">Allergies:</label>
-                                <input type="text" id="allergies" name="allergies" placeholder="eg., Penicillin" required>
+                                <input type="text" id="allergies" name="allergies" placeholder="eg., Penicillin" value="<?php echo getFormValue('allergies'); ?>" required>
                             </div>
                             <div class="form-group">
                                 <label for="duration_of_symptoms">Reaction for Hospitalization: Duration of Symptoms:</label>
-                                <input type="text" id="duration_of_symptoms" name="duration_of_symptoms" placeholder="eg., hives" required>
+                                <input type="text" id="duration_of_symptoms" name="duration_of_symptoms" placeholder="eg., hives" value="<?php echo getFormValue('duration_of_symptoms'); ?>" required>
                             </div>
                             <div class="form-group">
                                 <label for="regular_medication">Regular Medication:</label>
-                                <input type="text" id="regular_medication" name="regular_medication" placeholder="eg., Lisinopril 10mg, once daily" required>
+                                <input type="text" id="regular_medication" name="regular_medication" placeholder="eg., Lisinopril 10mg, once daily" value="<?php echo getFormValue('regular_medication'); ?>" required>
                             </div>
                             <div class="habits">
                                 <div class="form-group">
                                     <label for="dietary_habits">Dietary Habits:</label>
-                                    <input type="text" id="dietary_habits" name="dietary_habits" placeholder="eg., Balanced diet" required>
+                                    <input type="text" id="dietary_habits" name="dietary_habits" placeholder="eg., Balanced diet" value="<?php echo getFormValue('dietary_habits'); ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="elimination_habits">Elimination Habits:</label>
-                                    <input type="text" id="elimination_habits" name="elimination_habits" placeholder="eg., Daily bowel movements" required>
+                                    <input type="text" id="elimination_habits" name="elimination_habits" placeholder="eg., Daily bowel movements" value="<?php echo getFormValue('elimination_habits'); ?>" required>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label for="sleep_patterns">Sleep Patterns:</label>
-                                <input type="text" id="sleep_patterns" name="sleep_patterns" placeholder="eg., Difficulty falling asleep (insomnia)" required>
+                                <input type="text" id="sleep_patterns" name="sleep_patterns" placeholder="eg., Difficulty falling asleep (insomnia)" value="<?php echo getFormValue('sleep_patterns'); ?>" required>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
             <div class="label-headers">
                 <h3 class="section-title-patient-needs">PATIENT NEEDS</h3>
                 <h3 class="section-title-radio-options">FAMILY HISTORY</h3>
                 <h3 class="section-title-others">OTHERS/RELATIONSHIP</h3>
             </div>
+
             <div class="label-section">
                 <div class="form-group">
                     <div class="needs-labels">
@@ -808,7 +890,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 <div class="radio-options">
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="personal-care-yes" class="item">
-                                            <input type="radio" id="personal-care-yes" name="personal-care" value="yes"/>
+                                            <input type="radio" id="personal-care-yes" name="personal-care" value="yes" <?php echo isChecked('personal_care', 'yes'); ?> />
                                             <label for="personal-care-yes" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -819,7 +901,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                     </div>
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="personal-care-no" class="item">
-                                            <input type="radio" id="personal-care-no" name="personal-care" value="no" />
+                                            <input type="radio" id="personal-care-no" name="personal-care" value="no" <?php echo isChecked('personal_care', 'no'); ?> />
                                             <label for="personal-care-no" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -842,7 +924,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 <div class="radio-options">
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="ambulation-yes" class="item">
-                                            <input type="radio" id="ambulation-yes" name="ambulation" value="yes" />
+                                            <input type="radio" id="ambulation-yes" name="ambulation" value="yes" <?php echo isChecked('ambulation', 'yes'); ?> />
                                             <label for="ambulation-yes" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -853,7 +935,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                     </div>
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="ambulation-no" class="item">
-                                            <input type="radio" id="ambulation-no" name="ambulation" value="no"/>
+                                            <input type="radio" id="ambulation-no" name="ambulation" value="no" <?php echo isChecked('ambulation', 'no'); ?> />
                                             <label for="ambulation-no" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -876,7 +958,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 <div class="radio-options">
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="communication-yes" class="item">
-                                            <input type="radio" id="communication-yes" name="communication" value="yes"/>
+                                            <input type="radio" id="communication-yes" name="communication" value="yes" <?php echo isChecked('communication_problem', 'yes'); ?> />
                                             <label for="communication-yes" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -887,7 +969,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                     </div>
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="communication-no" class="item">
-                                            <input type="radio" id="communication-no" name="communication" value="no" />
+                                            <input type="radio" id="communication-no" name="communication" value="no" <?php echo isChecked('communication_problem', 'no'); ?> />
                                             <label for="communication-no" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -910,7 +992,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 <div class="radio-options">
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="isolation-yes" class="item">
-                                            <input type="radio" id="isolation-yes" name="isolation" value="yes" />
+                                            <input type="radio" id="isolation-yes" name="isolation" value="yes" <?php echo isChecked('isolation', 'yes'); ?> />
                                             <label for="isolation-yes" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -921,7 +1003,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                     </div>
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="isolation-no" class="item">
-                                            <input type="radio" id="isolation-no" name="isolation" value="no" />
+                                            <input type="radio" id="isolation-no" name="isolation" value="no" <?php echo isChecked('isolation', 'no'); ?> />
                                             <label for="isolation-no" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -944,7 +1026,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 <div class="radio-options">
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="skin-care-yes" class="item">
-                                            <input type="radio" id="skin-care-yes" name="skin-care" value="yes"/>
+                                            <input type="radio" id="skin-care-yes" name="skin-care" value="yes" <?php echo isChecked('skin_care', 'yes'); ?> />
                                             <label for="skin-care-yes" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -955,7 +1037,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                     </div>
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="skin-care-no" class="item">
-                                            <input type="radio" id="skin-care-no" name="skin-care" value="no"/>
+                                            <input type="radio" id="skin-care-no" name="skin-care" value="no" <?php echo isChecked('skin_care', 'no'); ?> />
                                             <label for="skin-care-no" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -978,7 +1060,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 <div class="radio-options">
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="wound-care-yes" class="item">
-                                            <input type="radio" id="wound-care-yes" name="wound-care" value="yes" />
+                                            <input type="radio" id="wound-care-yes" name="wound-care" value="yes" <?php echo isChecked('wound_care', 'yes'); ?> />
                                             <label for="wound-care-yes" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -989,7 +1071,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                     </div>
                                     <div class="checkbox-wrapper-52" style="min-width: 40px;">
                                         <label for="wound-care-no" class="item">
-                                            <input type="radio" id="wound-care-no" name="wound-care" value="no"/>
+                                            <input type="radio" id="wound-care-no" name="wound-care" value="no" <?php echo isChecked('wound_care', 'no'); ?> />
                                             <label for="wound-care-no" class="cbx">
                                                 <svg width="14px" height="12px" viewBox="0 0 14 12">
                                                     <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1004,7 +1086,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -1016,42 +1097,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             <div class="fr">
                 <div class="first-row">
                     <span>Ht:</span>
-                    <div><input class="fr-input1" type="text" name="height" placeholder="Height" required ></div>
+                    <div><input class="fr-input1" type="text" name="height" placeholder="Height" value="<?php echo getFormValue('height'); ?>" required></div>
 
                     <span>Wt:</span>
-                    <div><input class="fr-input2" type="text" name="weight" placeholder="Weight" required ></div>
+                    <div><input class="fr-input2" type="text" name="weight" placeholder="Weight" value="<?php echo getFormValue('weight'); ?>" required></div>
 
                     <span>BP lft:</span>
-                    <div><input class="fr-input3" type="text" name="BP_lft" placeholder="BP reading" required></div>
+                    <div><input class="fr-input3" type="text" name="BP_lft" placeholder="BP reading" value="<?php echo getFormValue('bp_lft'); ?>" required></div>
 
                     <span>Pulse:</span>
-                    <div><input class="fr-input4" type="text" name="pulse" placeholder="Pulse rate" required></div>
+                    <div><input class="fr-input4" type="text" name="pulse" placeholder="Pulse rate" value="<?php echo getFormValue('pulse'); ?>" required></div>
 
                     <span>Strong:</span>
-                    <div><input class="fr-input5" type="text" name="strong" required></div>
-
                     <div class="radio-cell">
                         <div class="checkbox-wrapper-52" id="left" style="margin-right: 30px; margin-left: 2rem; min-width: 0;">
                             <label for="respiration-weak" class="item">
-                                <input type="radio" id="respiration-weak" name="respiration" value="weak" class="hidden toggle-radio"/>
+                                <input type="radio" id="respiration-weak" name="respiration" value="weak" class="hidden toggle-radio" <?php echo isChecked('status', 'weak'); ?> />
                                 <label for="respiration-weak" class="cbx">
                                     <svg width="14px" height="12px" viewBox="0 0 14 12">
                                         <polyline points="1 7.6 5 11 13 1"></polyline>
                                     </svg>
-                                </label>
-                                <label for="respiration-weak" class="cbx-lbl">Weak</label>
+                                    </label>
+                                    <label for="respiration-weak" class="cbx-lbl">Weak</label>
                             </label>
                         </div>
 
                         <div class="checkbox-wrapper-52" id="left" style="margin-right: 30px;min-width: 0;">
                             <label for="respiration-irregular" class="item">
-                                <input type="radio" id="respiration-irregular" name="respiration" value="irregular" class="hidden toggle-radio"/>
+                                <input type="radio" id="respiration-irregular" name="respiration" value="irregular" class="hidden toggle-radio" <?php echo isChecked('status', 'irregular'); ?> />
                                 <label for="respiration-irregular" class="cbx">
                                     <svg width="14px" height="12px" viewBox="0 0 14 12">
                                         <polyline points="1 7.6 5 11 13 1"></polyline>
                                     </svg>
-                                </label>
-                                <label for="respiration-irregular" class="cbx-lbl">Irregular</label>
+                                    </label>
+                                    <label for="respiration-irregular" class="cbx-lbl">Irregular</label>
                             </label>
                         </div>
                     </div>
@@ -1064,7 +1143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <td colspan="10">
                             <div class="checkbox-wrapper-52">
                                 <label for="orientation-time" class="item">
-                                    <input type="radio" id="orientation-time" name="orientation" value="time" class="hidden toggle-radio"/>
+                                    <input type="radio" id="orientation-time" name="orientation" value="time" class="hidden toggle-radio" <?php echo isChecked('orientation', 'time'); ?> />
                                     <label for="orientation-time" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1076,7 +1155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="orientation-person" class="item">
-                                    <input type="radio" id="orientation-person" name="orientation" value="person" class="hidden toggle-radio"/>
+                                    <input type="radio" id="orientation-person" name="orientation" value="person" class="hidden toggle-radio" <?php echo isChecked('orientation', 'person'); ?> />
                                     <label for="orientation-person" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1088,7 +1167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="orientation-event-disoriented" class="item">
-                                    <input type="radio" id="orientation-event-disoriented" name="orientation" value="event-disoriented" class="hidden toggle-radio"/>
+                                    <input type="radio" id="orientation-event-disoriented" name="orientation" value="event-disoriented" class="hidden toggle-radio" <?php echo isChecked('orientation', 'event-disoriented'); ?> />
                                     <label for="orientation-event-disoriented" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1100,7 +1179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="orientation-confused" class="item">
-                                    <input type="radio" id="orientation-confused" name="orientation" value="confused" class="hidden toggle-radio"/>
+                                    <input type="radio" id="orientation-confused" name="orientation" value="confused" class="hidden toggle-radio" <?php echo isChecked('orientation', 'confused'); ?> />
                                     <label for="orientation-confused" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1117,7 +1196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <td colspan="10">
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-normal" class="item">
-                                    <input type="radio" id="skin-normal" name="skin" value="normal" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-normal" name="skin" value="normal" class="hidden toggle-radio" <?php echo isChecked('skin_color', 'normal'); ?> />
                                     <label for="skin-normal" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1129,7 +1208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-pale" class="item">
-                                    <input type="radio" id="skin-pale" name="skin" value="pale" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-pale" name="skin" value="pale" class="hidden toggle-radio" <?php echo isChecked('skin_color', 'pale'); ?> />
                                     <label for="skin-pale" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1141,7 +1220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-cyanotic" class="item">
-                                    <input type="radio" id="skin-cyanotic" name="skin" value="cyanotic" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-cyanotic" name="skin" value="cyanotic" class="hidden toggle-radio" <?php echo isChecked('skin_color', 'cyanotic'); ?> />
                                     <label for="skin-cyanotic" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1153,7 +1232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-jaundiced" class="item">
-                                    <input type="radio" id="skin-jaundiced" name="skin" value="jaundiced" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-jaundiced" name="skin" value="jaundiced" class="hidden toggle-radio" <?php echo isChecked('skin_color', 'jaundiced'); ?> />
                                     <label for="skin-jaundiced" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1165,7 +1244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-dusky" class="item">
-                                    <input type="radio" id="skin-dusky" name="skin" value="dusky" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-dusky" name="skin" value="dusky" class="hidden toggle-radio" <?php echo isChecked('skin_color', 'dusky'); ?> />
                                     <label for="skin-dusky" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1177,7 +1256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-modified" class="item">
-                                    <input type="radio" id="skin-modified" name="skin" value="modified" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-modified" name="skin" value="modified" class="hidden toggle-radio" <?php echo isChecked('skin_color', 'modified'); ?> />
                                     <label for="skin-modified" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1194,7 +1273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <td colspan="10">
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-turgor-loose" class="item">
-                                    <input type="radio" id="skin-turgor-loose" name="skin-turgor" value="loose" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-turgor-loose" name="skin-turgor" value="loose" class="hidden toggle-radio" <?php echo isChecked('skin_turgor', 'loose'); ?> />
                                     <label for="skin-turgor-loose" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1206,7 +1285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-turgor-tight" class="item">
-                                    <input type="radio" id="skin-turgor-tight" name="skin-turgor" value="tight" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-turgor-tight" name="skin-turgor" value="tight" class="hidden toggle-radio" <?php echo isChecked('skin_turgor', 'tight'); ?> />
                                     <label for="skin-turgor-tight" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1218,7 +1297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-turgor-edema" class="item">
-                                    <input type="radio" id="skin-turgor-edema" name="skin-turgor" value="edema" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-turgor-edema" name="skin-turgor" value="edema" class="hidden toggle-radio" <?php echo isChecked('skin_turgor', 'edema'); ?> />
                                     <label for="skin-turgor-edema" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1235,7 +1314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <td colspan="10">
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-temp-warm" class="item">
-                                    <input type="radio" id="skin-temp-warm" name="skin-temp" value="warm" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-temp-warm" name="skin-temp" value="warm" class="hidden toggle-radio" <?php echo isChecked('skin_temp', 'warm'); ?> />
                                     <label for="skin-temp-warm" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1247,7 +1326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-temp-dry" class="item">
-                                    <input type="radio" id="skin-temp-dry" name="skin-temp" value="dry" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-temp-dry" name="skin-temp" value="dry" class="hidden toggle-radio" <?php echo isChecked('skin_temp', 'dry'); ?> />
                                     <label for="skin-temp-dry" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1259,7 +1338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-temp-clammy" class="item">
-                                    <input type="radio" id="skin-temp-clammy" name="skin-temp" value="clammy" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-temp-clammy" name="skin-temp" value="clammy" class="hidden toggle-radio" <?php echo isChecked('skin_temp', 'clammy'); ?> />
                                     <label for="skin-temp-clammy" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1271,7 +1350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-temp-cool" class="item">
-                                    <input type="radio" id="skin-temp-cool" name="skin-temp" value="cool" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-temp-cool" name="skin-temp" value="cool" class="hidden toggle-radio" <?php echo isChecked('skin_temp', 'cool'); ?> />
                                     <label for="skin-temp-cool" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1283,7 +1362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-temp-diaphoretic" class="item">
-                                    <input type="radio" id="skin-temp-diaphoretic" name="skin-temp" value="diaphoretic" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-temp-diaphoretic" name="skin-temp" value="diaphoretic" class="hidden toggle-radio" <?php echo isChecked('skin_temp', 'diaphoretic'); ?> />
                                     <label for="skin-temp-diaphoretic" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1295,7 +1374,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
                             <div class="checkbox-wrapper-52">
                                 <label for="skin-temp-moist" class="item">
-                                    <input type="radio" id="skin-temp-moist" name="skin-temp" value="moist" class="hidden toggle-radio"/>
+                                    <input type="radio" id="skin-temp-moist" name="skin-temp" value="moist" class="hidden toggle-radio" <?php echo isChecked('skin_temp', 'moist'); ?> />
                                     <label for="skin-temp-moist" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1309,36 +1388,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     <tr>
                         <th>Mucous Membrane:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="mucous-moist" class="item"><input type="radio" id="mucous-moist" name="mucous-membrane" value="moist" class="hidden toggle-radio"/><label for="mucous-moist" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-moist" class="cbx-lbl">Moist</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="mucous-dry" class="item"><input type="radio" id="mucous-dry" name="mucous-membrane" value="dry" class="hidden toggle-radio"/><label for="mucous-dry" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-dry" class="cbx-lbl">Dry</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="mucous-cracked" class="item"><input type="radio" id="mucous-cracked" name="mucous-membrane" value="cracked" class="hidden toggle-radio"/><label for="mucous-cracked" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-cracked" class="cbx-lbl">Cracked</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="mucous-sore" class="item"><input type="radio" id="mucous-sore" name="mucous-membrane" value="sore" class="hidden toggle-radio"/><label for="mucous-sore" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-sore" class="cbx-lbl">Sore</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="mucous-moist" class="item"><input type="radio" id="mucous-moist" name="mucous-membrane" value="moist" class="hidden toggle-radio" <?php echo isChecked('mucous_membrane', 'moist'); ?> /><label for="mucous-moist" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-moist" class="cbx-lbl">Moist</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="mucous-dry" class="item"><input type="radio" id="mucous-dry" name="mucous-membrane" value="dry" class="hidden toggle-radio" <?php echo isChecked('mucous_membrane', 'dry'); ?> /><label for="mucous-dry" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-dry" class="cbx-lbl">Dry</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="mucous-cracked" class="item"><input type="radio" id="mucous-cracked" name="mucous-membrane" value="cracked" class="hidden toggle-radio" <?php echo isChecked('mucous_membrane', 'cracked'); ?> /><label for="mucous-cracked" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-cracked" class="cbx-lbl">Cracked</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="mucous-sore" class="item"><input type="radio" id="mucous-sore" name="mucous-membrane" value="sore" class="hidden toggle-radio" <?php echo isChecked('mucous_membrane', 'sore'); ?> /><label for="mucous-sore" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="mucous-sore" class="cbx-lbl">Sore</label></label></div>
                         </td>
                     </tr>
 
                     <tr>
                         <th>Peripheral Sounds:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="peripheral-audible" class="item"><input type="radio" id="peripheral-audible" name="peripheral-sounds" value="audible" class="hidden toggle-radio"/><label for="peripheral-audible" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="peripheral-audible" class="cbx-lbl">Audible</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="peripheral-sound" class="item"><input type="radio" id="peripheral-sound" name="peripheral-sounds" value="sound" class="hidden toggle-radio"/><label for="peripheral-sound" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="peripheral-sound" class="cbx-lbl">Sound</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="peripheral-audible" class="item"><input type="radio" id="peripheral-audible" name="peripheral-sounds" value="audible" class="hidden toggle-radio" <?php echo isChecked('peripheral_sounds', 'audible'); ?> /><label for="peripheral-audible" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="peripheral-audible" class="cbx-lbl">Audible</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="peripheral-sound" class="item"><input type="radio" id="peripheral-sound" name="peripheral-sounds" value="sound" class="hidden toggle-radio" <?php echo isChecked('peripheral_sounds', 'sound'); ?> /><label for="peripheral-sound" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="peripheral-sound" class="cbx-lbl">Sound</label></label></div>
                         </td>
                     </tr>
 
                     <tr>
                         <th>Neck Vein Distention a! 45:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="neck-absent" class="item"><input type="radio" id="neck-absent" name="neck-vein-distention" value="absent" class="hidden toggle-radio"/><label for="neck-absent" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="neck-absent" class="cbx-lbl">Absent</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="neck-flat" class="item"><input type="radio" id="neck-flat" name="neck-vein-distention" value="flat" class="hidden toggle-radio"/><label for="neck-flat" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="neck-flat" class="cbx-lbl">Flat</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="neck-absent" class="item"><input type="radio" id="neck-absent" name="neck-vein-distention" value="absent" class="hidden toggle-radio" <?php echo isChecked('neck_vein_distention', 'absent'); ?> /><label for="neck-absent" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="neck-absent" class="cbx-lbl">Absent</label></label></div>
+
+
+
+                            <div class="checkbox-wrapper-52"><label for="neck-flat" class="item"><input type="radio" id="neck-flat" name="neck-vein-distention" value="flat" class="hidden toggle-radio" <?php echo isChecked('neck_vein_distention', 'flat'); ?> /><label for="neck-flat" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5  11 13 1"></polyline></svg></label><label for="neck-flat" class="cbx-lbl">Flat</label></label></div>
                         </td>
                     </tr>
 
                     <tr>
                         <th>Respiratory Status:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="resp-labored" class="item"><input type="radio" id="resp-labored" name="respiratory-status" value="labored" class="hidden toggle-radio"/><label for="resp-labored" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-labored" class="cbx-lbl">Labored</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="resp-unlabored" class="item"><input type="radio" id="resp-unlabored" name="respiratory-status" value="unlabored" class="hidden toggle-radio"/><label for="resp-unlabored" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-unlabored" class="cbx-lbl">Unlabored</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="resp-sob" class="item"><input type="radio" id="resp-sob" name="respiratory-status" value="sob" class="hidden toggle-radio"/><label for="resp-sob" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-sob" class="cbx-lbl">SOB</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="resp-accessory" class="item"><input type="radio" id="resp-accessory" name="respiratory-status" value="accessory" class="hidden toggle-radio"/><label for="resp-accessory" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline>
+                            <div class="checkbox-wrapper-52"><label for="resp-labored" class="item"><input type="radio" id="resp-labored" name="respiratory-status" value="labored" class="hidden toggle-radio" <?php echo isChecked('respiratory_status', 'labored'); ?> /><label for="resp-labored" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-labored" class="cbx-lbl">Labored</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="resp-unlabored" class="item"><input type="radio" id="resp-unlabored" name="respiratory-status" value="unlabored" class="hidden toggle-radio" <?php echo isChecked('respiratory_status', 'unlabored'); ?> /><label for="resp-unlabored" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-unlabored" class="cbx-lbl">Unlabored</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="resp-sob" class="item"><input type="radio" id="resp-sob" name="respiratory-status" value="sob" class="hidden toggle-radio" <?php echo isChecked('respiratory_status', 'sob'); ?> /><label for="resp-sob" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-sob" class="cbx-lbl">SOB</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="resp-accessory" class="item"><input type="radio" id="resp-accessory" name="respiratory-status" value="accessory" class="hidden toggle-radio" <?php echo isChecked('respiratory_status', 'accessory'); ?> /><label for="resp-accessory" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline>
                                     </svg>
                                 </label>
                                 <label for="resp-accessory" class="cbx-lbl">Accessory Muscles</label>
@@ -1349,28 +1431,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     <tr>
                         <th>Respiratory Sounds:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="resp-clear" class="item"><input type="radio" id="resp-clear" name="respiratory-sounds" value="clear" class="hidden toggle-radio"/><label for="resp-clear" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-clear" class="cbx-lbl">Rules</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="resp-rhonchi" class="item"><input type="radio" id="resp-rhonchi" name="respiratory-sounds" value="rhonchi" class="hidden toggle-radio"/><label for="resp-rhonchi" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-rhonchi" class="cbx-lbl">Bhonchi Wheezing</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="resp-crackles" class="item"><input type="radio" id="resp-crackles" name="respiratory-sounds" value="crackles" class="hidden toggle-radio"/><label for="resp-crackles" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-crackles" class="cbx-lbl">Clear</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="resp-clear" class="item"><input type="radio" id="resp-clear" name="respiratory-sounds" value="clear" class="hidden toggle-radio" <?php echo isChecked('respiratory_sounds', 'clear'); ?> /><label for="resp-clear" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-clear" class="cbx-lbl">Rules</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="resp-rhonchi" class="item"><input type="radio" id="resp-rhonchi" name="respiratory-sounds" value="rhonchi" class="hidden toggle-radio" <?php echo isChecked('respiratory_sounds', 'rhonchi'); ?> /><label for="resp-rhonchi" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-rhonchi" class="cbx-lbl">Bhonchi Wheezing</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="resp-crackles" class="item"><input type="radio" id="resp-crackles" name="respiratory-sounds" value="crackles" class="hidden toggle-radio" <?php echo isChecked('respiratory_sounds', 'crackles'); ?> /><label for="resp-crackles" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="resp-crackles" class="cbx-lbl">Clear</label></label></div>
                         </td>
                     </tr>
                         <th>Cough:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="cough-none" class="item"><input type="radio" id="cough-none" name="cough" value="none" class="hidden toggle-radio"/><label for="cough-none" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="cough-none" class="cbx-lbl">None</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="cough-productive" class="item"><input type="radio" id="cough-productive" name="cough" value="productive" class="hidden toggle-radio"/><label for="cough-productive" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="cough-productive" class="cbx-lbl">Productive</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="cough-dry" class="item"><input type="radio" id="cough-dry" name="cough" value="dry" class="hidden toggle-radio"/><label for="cough-dry" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="cough-dry" class="cbx-lbl">None Productive</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="cough-none" class="item"><input type="radio" id="cough-none" name="cough" value="none" class="hidden toggle-radio" <?php echo isChecked('cough', 'none'); ?> /><label for="cough-none" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="cough-none" class="cbx-lbl">None</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="cough-productive" class="item"><input type="radio" id="cough-productive" name="cough" value="productive" class="hidden toggle-radio" <?php echo isChecked('cough', 'productive'); ?> /><label for="cough-productive" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="cough-productive" class="cbx-lbl">Productive</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="cough-dry" class="item"><input type="radio" id="cough-dry" name="cough" value="dry" class="hidden toggle-radio" <?php echo isChecked('cough', 'dry'); ?> /><label for="cough-dry" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="cough-dry" class="cbx-lbl">None Productive</label></label></div>
                         </td>
                     </tr>
 
                     <tr>
                         <th>Sputum:</th>
                         <td colspan="10">
-                            <div class="checkbox-wrapper-52"><label for="sputum-moderate" class="item"><input type="radio" id="sputum-moderate" name="sputum" value="moderate" class="hidden toggle-radio"/><label for="sputum-moderate" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-moderate" class="cbx-lbl">Moderate</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="sputum-large" class="item"><input type="radio" id="sputum-large" name="sputum" value="large" class="hidden toggle-radio"/><label for="sputum-large" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-large" class="cbx-lbl">Large</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="sputum-thin" class="item"><input type="radio" id="sputum-thin" name="sputum" value="thin" class="hidden toggle-radio"/><label for="sputum-thin" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-thin" class="cbx-lbl">Thin</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="sputum-thick" class="item"><input type="radio" id="sputum-thick" name="sputum" value="thick" class="hidden toggle-radio"/><label for="sputum-thick" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-thick" class="cbx-lbl">Thick</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="sputum-mucoid" class="item"><input type="radio" id="sputum-mucoid" name="sputum" value="mucoid" class="hidden toggle-radio"/><label for="sputum-mucoid" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-mucoid" class="cbx-lbl">Mucoid</label></label></div>
-                            <div class="checkbox-wrapper-52"><label for="sputum-tenacious" class="item"><input type="radio" id="sputum-tenacious" name="sputum" value="tenacious" class="hidden toggle-radio"/><label for="sputum-tenacious" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-tenacious" class="cbx-lbl">Frothy Tenacious</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="sputum-moderate" class="item"><input type="radio" id="sputum-moderate" name="sputum" value="moderate" class="hidden toggle-radio" <?php echo isChecked('sputum', 'moderate'); ?> /><label for="sputum-moderate" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-moderate" class="cbx-lbl">Moderate</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="sputum-large" class="item"><input type="radio" id="sputum-large" name="sputum" value="large" class="hidden toggle-radio" <?php echo isChecked('sputum', 'large'); ?> /><label for="sputum-large" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-large" class="cbx-lbl">Large</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="sputum-thin" class="item"><input type="radio" id="sputum-thin" name="sputum" value="thin" class="hidden toggle-radio" <?php echo isChecked('sputum', 'thin'); ?> /><label for="sputum-thin" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-thin" class="cbx-lbl">Thin</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="sputum-thick" class="item"><input type="radio" id="sputum-thick" name="sputum" value="thick" class="hidden toggle-radio" <?php echo isChecked('sputum', 'thick'); ?> /><label for="sputum-thick" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-thick" class="cbx-lbl">Thick</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="sputum-mucoid" class="item"><input type="radio" id="sputum-mucoid" name="sputum" value="mucoid" class="hidden toggle-radio" <?php echo isChecked('sputum', 'mucoid'); ?> /><label for="sputum-mucoid" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-mucoid" class="cbx-lbl">Mucoid</label></label></div>
+                            <div class="checkbox-wrapper-52"><label for="sputum-tenacious" class="item"><input type="radio" id="sputum-tenacious" name="sputum" value="tenacious" class="hidden toggle-radio" <?php echo isChecked('sputum', 'tenacious'); ?> /><label for="sputum-tenacious" class="cbx"><svg width="14px" height="12px" viewBox="0 0 14 12"><polyline points="1 7.6 5 11 13 1"></polyline><polyline points="1 7.6 5 11 13 1"></polyline></svg></label><label for="sputum-tenacious" class="cbx-lbl">Frothy Tenacious</label></label></div>
                         </td>
                     </tr>
 
@@ -1378,11 +1460,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                         <th>Temperature:</th>
                         <td colspan="10">
                             <div class="checkbox-wrapper-52">
-                                <input class="temp-input" type="number" name="temp_ranges" id="temp-ranges" placeholder="Degrees" required>
+                                <input class="temp-input" type="number" name="temp_ranges" id="temp-ranges" placeholder="Degrees" value="<?php echo getFormValue('temp_ranges'); ?>" required>
                             </div>
                             <div class="checkbox-wrapper-52">
                                 <label for="temperature-oral" class="item">
-                                    <input type="radio" id="temperature-oral" name="temperature" value="oral" class="hidden toggle-radio"/>
+                                    <input type="radio" id="temperature-oral" name="temperature" value="oral" class="hidden toggle-radio" <?php echo isChecked('temperature', 'oral'); ?> />
                                     <label for="temperature-oral" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1393,7 +1475,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                             <div class="checkbox-wrapper-52">
                                 <label for="temperature-axilla" class="item">
-                                    <input type="radio" id="temperature-axilla" name="temperature" value="axilla" class="hidden toggle-radio"/>
+                                    <input type="radio" id="temperature-axilla" name="temperature" value="axilla" class="hidden toggle-radio" <?php echo isChecked('temperature', 'axilla'); ?> />
                                     <label for="temperature-axilla" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1404,7 +1486,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                             </div>
                             <div class="checkbox-wrapper-52">
                                 <label for="temperature-rectal" class="item">
-                                    <input type="radio" id="temperature-rectal" name="temperature" value="rectal" class="hidden toggle-radio"/>
+                                    <input type="radio" id="temperature-rectal" name="temperature" value="rectal" class="hidden toggle-radio" <?php echo isChecked('temperature', 'rectal'); ?> />
                                     <label for="temperature-rectal" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
                                             <polyline points="1 7.6 5 11 13 1"></polyline>
@@ -1417,7 +1499,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     </tr>
                 </table>
             </div>
+            <br>
 
+            <div class="header-section">
+                <h3>PATIENT MEDICATION</h3>
+            </div>
+                <div class="medication-wrapper">
+                    <div class="medication-input-wrapper">
+                        <div class="form-group">
+                            <label for="date_prescribed">Date:</label>
+                            <input class="signature-input-adm" type="datetime-local" id="date_prescribed" name="date_prescribed" value="<?php echo getFormValue('date_prescribed', ''); ?>" >
+                        </div>
+                        <div class="form-group">
+                            <label for="medication_type">Medication Type:</label>
+                            <input type="text" id="medication_type" name="medication_type" placeholder="eg., IV Drips" value="<?php echo getFormValue('medication_type', ''); ?>" >
+                        </div>
+                        <div class="form-group">
+                            <label for="medication_name">Medication Name:</label>
+                            <input type="text" id="medication_name" name="medication_name" placeholder="eg., Crystalloids" value="<?php echo getFormValue('medication_name', ''); ?>" >
+                        </div>
+                        <div class="form-group">
+                            <label for="dose">Dose:</label>
+                            <input type="text" id="dose" name="dose" placeholder="eg., 250mL" value="<?php echo getFormValue('dose', ''); ?>" >
+                        </div>
+                        <div class="form-group">
+                            <label for="frequency">Frequency:</label>
+                            <input type="number" id="times_per_day" name="times_per_day" placeholder="3 times" class="frequency-input" value="<?php echo getFormValue('times_per_day', ''); ?>" >
+                            <label for="">Times</label>
+                            <span>|</span>
+                            <label for="interval_minutes">Every:</label>
+                            <input type="number" id="interval_minutes" name="interval_minutes" placeholder="every X minutes" class="frequency-input" value="<?php echo getFormValue('interval_minutes', ''); ?>" >
+                            <label for="start_datetime">Start (optional):</label>
+                            <input type="datetime-local" id="start_datetime" name="start_datetime" class="frequency-input" value="<?php echo getFormValue('start_datetime', ''); ?>" >
+                        </div>
+                        <div class="form-group">
+                            <label for="notes">Description:</label>
+                            <input type="text" id="notes" name="notes" placeholder="eg., For dehydration" value="<?php echo getFormValue('notes', ''); ?>" >
+                        </div>
+                    </div>
+                </div>
             <br>
             <div class="header-section">
                 <h3>PATIENT INFORMATION</h3>
@@ -1481,95 +1601,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                 </div>
                 <div class="signature-container">
                     <div class="">
-                        <input class="signature-input" type="password" id="password" name="password" value="" required>
+                        <input class="signature-input" type="password" id="password" name="password" value="<?php echo htmlspecialchars($patient_data['password'] ?? ''); ?>" required>
                     </div>
                     <span class="signature-text">Password</span>
                 </div>
             </div>
-            <div class="signature-button">
-                <button type="submit" name="save_patient" value="update" id="submitBtn">Update Patient</button>
+            <div class="button-container">
+                <button type="submit" name="save_patient" value="save" id="submitBtn" style="position: relative; z-index: 1000;">Save</button>
+            </div>
             </div>
             </form>
         </div>
     </div>
     <script src="./Javascript/toggle-radio.js"></script>
-    <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const data = <?php echo json_encode($patient_data); ?>;
-
-    if (Object.keys(data).length === 0) return;
-
-    // Populate patient info - use correct field names from patients table
-    const firstNameEl = document.getElementById('first_name');
-    const lastNameEl = document.getElementById('last_name');
-    const middleNameEl = document.getElementById('middle_name');
-
-    if (firstNameEl) firstNameEl.value = data.first_name || '';
-    if (lastNameEl) lastNameEl.value = data.last_name || '';
-    if (middleNameEl) middleNameEl.value = data.middle_name || '';
-
-    document.getElementById('date_of_birth').value = data.date_of_birth || '';
-    document.getElementById('gender').value = data.gender || '';
-    document.getElementById('contact_number').value = data.contact_number || '';
-    document.getElementById('address').value = data.address || '';
-    document.getElementById('email').value = data.email || '';
-    document.getElementById('admission_date').value = data.admission_date || '';
-    document.getElementById('admission_time').value = data.admission_time || '';
-    document.getElementById('history_date').value = data.history_date || '';
-    document.getElementById('allergies').value = data.allergies || '';
-    document.getElementById('duration_of_symptoms').value = data.duration_of_symptoms || '';
-    document.getElementById('regular_medication').value = data.regular_medication || '';
-    document.getElementById('dietary_habits').value = data.dietary_habits || '';
-    document.getElementById('elimination_habits').value = data.elimination_habits || '';
-    document.getElementById('sleep_patterns').value = data.sleep_patterns || '';
-
-    // Physical assessment
-    document.querySelector('input[name="height"]').value = data.height || '';
-    document.querySelector('input[name="weight"]').value = data.weight || '';
-    document.querySelector('input[name="BP_lft"]').value = data.bp_lft || '';
-    document.querySelector('input[name="pulse"]').value = data.pulse || '';
-    document.querySelector('input[name="strong"]').value = data.strong || '';
-    document.querySelector('input[name="temp_ranges"]').value = data.temp_ranges || '';
-
-    // Set radio buttons
-    const radioFields = {
-        'mode_of_arrival': data.mode_of_arrival,
-        'instructed': data.instructed,
-        'patient_status': data.patient_status,
-        'glasses_contact': data.glasses_or_contactlens,
-        'dentures': data.dentures,
-        'ambulatory': data.ambulatory_or_prosthesis,
-        'smoker': data.smoker,
-        'drinker': data.drinker,
-        'respiration': data.status,
-        'orientation': data.orientation,
-        'skin': data.skin_color,
-        'skin-turgor': data.skin_turgor,
-        'skin-temp': data.skin_temp,
-        'mucous-membrane': data.mucous_membrane,
-        'peripheral-sounds': data.peripheral_sounds,
-        'neck-vein-distention': data.neck_vein_distention,
-        'respiratory-status': data.respiratory_status,
-        'respiratory-sounds': data.respiratory_sounds,
-        'cough': data.cough,
-        'sputum': data.sputum,
-        'temperature': data.temperature,
-        'personal-care': data.personal_care,
-        'ambulation': data.ambulation,
-        'communication': data.communication_problem,
-        'isolation': data.isolation,
-        'skin-care': data.skin_care,
-        'wound-care': data.wound_care
-    };
-
-    Object.keys(radioFields).forEach(fieldName => {
-        const value = radioFields[fieldName];
-        if (value) {
-            const radio = document.querySelector(`input[name="${fieldName}"][value="${value}"]`);
-            if (radio) radio.checked = true;
-        }
-    });
-});
-    </script>
 </body>
 </html>

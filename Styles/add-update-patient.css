@@ -283,26 +283,73 @@ body {
     gap: 10px;
 }
 
-#reaction {
+#durationof_symptoms {
     width: 800px;
 }
 
-#regular-medication {
+#regular_medication {
     width: 1010px;
 }
 
-#dietary-habits {
+#dietary_habits {
     width: 30rem;
 }
 
-#elimination {
+#elimination_habits {
     width: 425px;
 }
 
-#sleep-patterns {
+#sleep_patterns {
     width: 1050px;
 }
 
+.history-input-wrapper{
+    flex: 1;
+}
+
+.medication-input-wrapper{
+    flex: 1;
+}
+.medication-input-wrapper input[type="text"] {
+    width: 15rem;
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    padding-left: 2rem;
+}
+
+#medication_type {
+    width: 1035px;
+}
+
+#dose {
+    width: 1115px;
+}
+
+#medication_name {
+    width: 1030px;
+}
+
+#frequency {
+    width: 305px;
+}
+
+#notes {
+    width: 1072px;
+}
+
+.frequency-input {
+    background: transparent;
+    font-size: medium;
+    color: var(--primary);
+    width: 16rem;
+    border: none;
+    border-bottom: 1px solid var(--primary);
+    padding: 0.5rem 0;
+    font-family: 'Cormorant Garamond', serif;
+    text-align: center;
+}
 
 /* Tablet Responsive Design */
 @media (max-width: 1200px) {
@@ -907,29 +954,43 @@ td .checkbox-wrapper-52 {
     text-align: center;
 }
 
-.signature-button {
-    width: 100%;
-    margin-left: 0 !important;
-    grid-column: 1 / -1;
-}
-
-button {
-    width: 100%;
-    padding: 10px;
-    background-color: #cdcfc1;
-    color: var(--primary);
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
+.button-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 20px;
+    border: 2px solid var(--primary);
+    border-radius: 5px;
+    background-color: transparent;
+    box-shadow: 4px 4px 0px #000000;
     transition: all 0.3s;
-    max-width: 200px;
-    display: block;
-    margin: 15px auto;
+    cursor: pointer;
+    margin-top: 1rem;
+    width: 10%;
+
 }
 
-button:hover {
-    box-shadow: 4px 4px 0px var(--primary);
-    transform: translate(-2px, -2px);
+.button-container button {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-family: "Hero New", sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.button-container button:hover {
+    outline: none;
+    box-shadow: none;
+    transform: none;
+    background-color: transparent;
+}
+
+.button-container:hover {
+    box-shadow: none;
+    transform: none;
+    background-color: transparent;
 }
 
 @media (max-width: 992px) {

@@ -1,13 +1,15 @@
 <?php
+// Use separate session name for admin
+session_name('admin_session');
 session_start();
 
 // Only allow nurse/admin logout
 if (!isset($_SESSION['is_nurse']) || $_SESSION['is_nurse'] !== true) {
-    header("Location: login.php");
+    header("Location: admin-login.php");
     exit();
 }
 
-// Destroy the session
+// Destroy only the admin session
 session_destroy();
 
 // Clear session data

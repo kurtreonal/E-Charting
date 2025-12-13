@@ -182,13 +182,21 @@ body {
     border: none;
     padding: 0.5rem;
     width: 48px;
-    height: 48px;
+    height: 40px;
+}
+.nav-item:last-child:hover {
+    box-shadow: none;
+    transform: none;
+    background-color: transparent;
 }
 
-.nav-item:not(:last-child):hover {
-    background-color: #cdcfc1;
-    color: var(--primary);
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0px #000000;
-    border: 1px solid var(--primary);
+.scrollable-container {
+  height: 200px; /* Set a fixed height to create overflow */
+  overflow-y: scroll;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollable-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }

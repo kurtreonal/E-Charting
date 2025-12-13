@@ -1,9 +1,12 @@
 <?php
 include 'connection.php';
+include_once 'includes/notification.php';
 session_start();
 
-//Only allow nurse
-if (!isset($_SESSION["is_nurse"]) || $_SESSION["is_nurse"] !== true) {
+// get the nurse_id from session
+$nurse_id = isset($_SESSION['nurse_id']) ? $_SESSION['nurse_id'] : null;
+
+if (!$nurse_id) {
     header("Location: admin-login.php");
     exit();
 }
@@ -44,7 +47,9 @@ $con->close();
     <script src="./Javascript/logoutFunction.js" defer></script>
 </head>
 <body>
-    <?php include "adm-nav.php"; ?>
+    <?php
+    include "adm-nav.php";
+     ?>
 
     <!--Add patient-->
     <div class="wrapper">
@@ -104,6 +109,8 @@ $con->close();
                             <td><?php echo htmlspecialchars($patient['first_name'] . ' ' .($patient['middle_name'] ? $patient['middle_name'] . ' ' : '' ).$patient['last_name'])?></td>
                             <td><?php echo htmlspecialchars($patient['patient_status'] ?? 'N/A'); ?></td>
                             <td>
+                                <a href="create-appointment.php?patient_id=<?php echo (int)$patient['patient_id']; ?>" class="btn btn-primary" aria-label="Create appointment for <?php echo htmlspecialchars($patient['first_name'].' '.$patient['last_name']); ?>">Create Appointment</a>
+                                <span style="font-style: normal;">|</span>
                                 <a href="update-patient.php?id=<?php echo $patient['patient_id']; ?>" class="">Edit</a>
                             </td>
                         </tr>
@@ -117,8 +124,10 @@ $con->close();
             </table>
         </div>
         <div class="signature-button">
-            <form method="POST" action="./adm-logout.php" onsubmit="return confirmLogout()">
-                <button class="logout-btn" type="submit" name="logout" id="logout">Logout</button>
+            <form method="POST" action="./staff-logout.php" onsubmit="return confirmLogout()">
+                <div  class="button-container">
+                    <button type="submit" name="logout" id="logout">Logout</button>
+                </div>
             </form>
         </div>
     </div>

@@ -21,8 +21,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('add-patient-form');
 
     if (form) {
-        //Load saved form data from localStorage on page load
-        loadFormData();
+        // Only load saved form data if we're on the add-patient page (not update-patient)
+        // Check if there's a patient ID in the URL - if so, we're updating (don't load localStorage)
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('id');
+        
+        if (!patientId) {
+            // Only load localStorage on add-patient page (no ID in URL)
+            loadFormData();
+        }
 
         //Save form data to localStorage as user types the data
         form.querySelectorAll('input, textarea, select').forEach(function(field) {
