@@ -358,7 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     <div class="datetime-wrapper">
                         <div class="form-group">
                             <label for="admission_date">Date:</label>
-                            <input class="signature-input-adm" type="date" id="admission_date" name="admission_date" required>
+                            <input class="signature-input-adm" type="date" id="admission_date" name="admission_date" value="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d'); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="admission_time">Time:</label>

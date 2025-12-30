@@ -122,10 +122,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
                             <i class="fa-brands fa-square-twitter"></i>
                         </div>
                     </div>
-
-                    <div class="footer">
-                        Don't have an account? <a href="">Sign up</a>
-                    </div>
                 </form>
             </div>
         </div>

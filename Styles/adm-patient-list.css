@@ -7,6 +7,9 @@ body {
     background-position-x: 15%;
     background-color: #becedf;
     background-attachment: fixed;
+    margin: 0;
+    padding: 0;
+    font-family: "Cormorant Garamond", serif;
 }
 
 .wrapper {
@@ -21,17 +24,33 @@ body {
     padding: 0 1rem;
 }
 
+/* ========================================
+   HEADER SECTION
+   ======================================== */
 .header-section {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--primary);
 }
 
-h1 {
+.header-content h1 {
     font-family: "Cormorant Garamond", serif;
     color: var(--primary);
     margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.section-subtitle {
+    font-family: "Cormorant Garamond", serif;
+    color: var(--primary);
+    font-size: 1.1rem;
+    font-style: italic;
+    margin-top: 0.5rem;
+    opacity: 0.8;
 }
 
 .btn-add-patient {
@@ -40,39 +59,267 @@ h1 {
 
 .btn-add-patient button {
     font-family: "Cormorant Garamond", serif;
-    padding: 2px 1rem;
+    padding: 8px 1.5rem;
     background-color: var(--secondary);
-    border: 1px solid var(--primary);
+    border: 2px solid var(--primary);
     color: var(--primary);
     cursor: pointer;
     transition: all 0.3s ease;
-    font-size: 22px;
+    font-size: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
 }
 
 .btn-add-patient button:hover {
     background-color: #cdcfc0;
     color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.3);
 }
 
+.btn-add-patient button i {
+    font-size: 0.9rem;
+}
+
+/* ========================================
+   METRICS GRID
+   ======================================== */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 2rem;
+}
+
+.metric-card {
+    background-color: #cdcfc0;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateY(20px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+}
+
+.metric-card[data-animate="fade-up"] {
+    animation: fadeUp 0.6s ease forwards;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.3);
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.metric-header h4 {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0;
+}
+
+.metric-icon {
+    font-size: 1.8rem;
+    color: var(--primary);
+    opacity: 0.7;
+}
+
+.metric-value {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 1rem;
+}
+
+.metric-value .value {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-right: 8px;
+}
+
+.metric-value .unit {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 1.2rem;
+    color: var(--primary);
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+.metric-progress {
+    margin-top: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--primary);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.5s ease;
+}
+
+.progress-label {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 0.95rem;
+    color: var(--primary);
+    font-style: italic;
+}
+
+/* ========================================
+   CHARTS ROW
+   ======================================== */
+.charts-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    margin-bottom: 2rem;
+}
+
+.chart-card {
+    background-color: #cdcfc0;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateY(20px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+}
+
+.chart-card[data-animate="fade-up"] {
+    animation: fadeUp 0.6s ease forwards;
+}
+
+.chart-card:hover {
+    box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.3);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.chart-header h3 {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* ========================================
+   PATIENT LIST SECTION
+   ======================================== */
+.patient-list-section {
+    background-color: #cdcfc0;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    opacity: 0;
+    transform: translateY(20px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+}
+
+.patient-list-section[data-animate="fade-up"] {
+    animation: fadeUp 0.6s ease forwards;
+}
+
+.patient-list-header {
+    margin-bottom: 1.5rem;
+}
+
+.patient-list-header h3 {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0;
+}
+
+/* ========================================
+   PATIENT LIST TABLE
+   ======================================== */
 .patient-list-table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0 5px;
+    border-spacing: 0 8px;
+}
+
+.patient-list-table thead tr {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.patient-list-table th {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+    padding: 12px;
+    text-align: left;
+    border: 1px solid var(--primary);
+}
+
+.patient-list-table th:first-child {
+    border-right: none;
+}
+
+.patient-list-table th:last-child {
+    border-left: none;
+    text-align: right;
 }
 
 .patient-list-table tr {
     font-family: "Cormorant Garamond", serif;
     font-style: italic;
     font-size: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.patient-list-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.03);
 }
 
 .patient-list-table td {
-    padding: 8px;
+    padding: 12px;
     border: 1px solid var(--primary);
+    background-color: #f1ebe5;
 }
 
 .patient-list-table td:first-child {
     text-align: left;
+    border-right: none;
+}
+
+.patient-list-table td:nth-child(2) {
+    text-align: center;
+    border-left: none;
     border-right: none;
 }
 
@@ -81,11 +328,50 @@ h1 {
     border-left: none;
 }
 
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    font-style: normal;
+    border: 1px solid var(--primary);
+}
+
+.status-badge.status-active {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-badge.status-inpatient {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-badge.status-outpatient {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.status-deceased {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* Actions Cell */
+.actions-cell {
+    white-space: nowrap;
+}
+
 .patient-list-table a {
     text-decoration: none;
     color: var(--primary);
-    padding: 2px 1rem;
-    transition: color 0.3s ease;
+    padding: 6px 1rem;
+    transition: all 0.3s ease;
+    font-style: normal;
+    display: inline-block;
 }
 
 .patient-list-table a:hover {
@@ -93,103 +379,66 @@ h1 {
     color: var(--secondary);
 }
 
-.card-container {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-    gap: 20px;
-}
-
-.card {
-    border: 1px solid black;
-    border-radius: 10px;
-    box-shadow: 5px 5px 5px hsl(0, 0%, 0%, 0.1);
-    text-align: center;
-    width: 200px;
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #cdcfc0;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 8px 8px 10px hsl(0, 0%, 0%, 0.2);
-}
-
-.card .card-title {
-    font-family: "Cormorant Garamond", serif;
-    font-size: 25px;
-    margin: 0;
-    color: var(--primary);
-    font-weight: bold;
-}
-
-@media (max-width: 768px) {
-    .card {
-        width: 150px;
-        height: 100px;
-        font-size: 0.95rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .card {
-        width: 100%;
-        max-width: 300px;
-        height: 90px;
-    }
-}
-
-
-
-@media all and (max-width: 768px) {
-
-    .btn-add-patient button {
-        font-size: 18px;
-        padding: 2px 0.5rem;
-    }
-
-    .patient-list-table tr {
-        font-size: 18px;
-    }
-
-    .patient-list-table td {
-        padding: 6px;
-    }
-
-    .patient-list-table a {
-        padding: 2px 0.5rem;
-    }
-}
-
-
-.signature-button {
-    width: 5rem;
-    margin-left: 0 !important;
-    display: flex;
-}
-
-.logout-btn {
-    width: 100%;
-    padding: 10px;
-    background-color: #cdcfc1;
-    color: var(--primary);
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-    max-width: 100px;
-    display: block;
-    margin: 15px auto;
-}
-
-a {
+.btn {
+    display: inline-block;
+    padding: 6px 1rem;
+    border-radius: 0;
     text-decoration: none;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-family: "Cormorant Garamond", serif;
+}
 
+.btn-primary {
+    background-color: var(--secondary);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary);
+    color: var(--secondary);
+}
+
+.btn-secondary {
+    background-color: var(--secondary);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary);
+    color: var(--secondary);
+}
+
+.btn-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #155724;
+}
+
+.btn-success:hover {
+    background-color: #155724;
+    color: #d4edda;
+}
+
+.separator {
+    margin: 0 10px;
+    color: var(--primary);
+    font-weight: 300;
+}
+
+/* ========================================
+   SIGNATURE BUTTON (LOGOUT)
+   ======================================== */
+.signature-button {
+    width: 100%;
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-start;
 }
 
 .button-container {
@@ -203,16 +452,15 @@ a {
     box-shadow: 4px 4px 0px #000000;
     transition: all 0.3s;
     cursor: pointer;
-    margin-top: 1rem;
 }
 
 .button-container button {
     background: none;
     border: none;
     color: var(--primary);
-    font-family: "Hero New", sans-serif;
+    font-family: "Cormorant Garamond", serif;
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
 }
 
@@ -225,6 +473,385 @@ a {
 
 .button-container:hover {
     box-shadow: none;
-    transform: none;
-    background-color: transparent;
+    transform: translateY(-2px);
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media screen and (max-width: 1200px) {
+    .charts-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .wrapper {
+        width: 95%;
+        padding: 1rem;
+        margin-top: 90px;
+    }
+
+    .container {
+        padding: 0 0.5rem;
+    }
+
+    .header-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .header-content h1 {
+        font-size: 2rem;
+    }
+
+    .section-subtitle {
+        font-size: 1rem;
+    }
+
+    .btn-add-patient button {
+        font-size: 18px;
+        padding: 6px 1rem;
+    }
+
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .charts-row {
+        grid-template-columns: 1fr;
+    }
+
+    .metric-card {
+        padding: 1rem;
+    }
+
+    .metric-value .value {
+        font-size: 2.5rem;
+    }
+
+    .chart-container {
+        height: 250px;
+    }
+
+    .patient-list-table tr {
+        font-size: 18px;
+    }
+
+    .patient-list-table td,
+    .patient-list-table th {
+        padding: 8px;
+    }
+
+    .patient-list-table a {
+        padding: 4px 0.5rem;
+    }
+
+    .actions-cell {
+        white-space: normal;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .wrapper {
+        width: 100%;
+        margin: 0.5rem auto;
+        padding: 0.5rem;
+        margin-top: 80px;
+    }
+
+    .header-content h1 {
+        font-size: 1.6rem;
+    }
+
+    .section-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .btn-add-patient button {
+        width: 100%;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .metric-value .value {
+        font-size: 2rem;
+    }
+
+    .metric-header h4 {
+        font-size: 1rem;
+    }
+
+    .chart-container {
+        height: 220px;
+    }
+
+    .patient-list-table {
+        font-size: 16px;
+    }
+
+    .patient-list-table tr {
+        font-size: 16px;
+    }
+
+    .patient-list-table td,
+    .patient-list-table th {
+        padding: 6px;
+        font-size: 14px;
+    }
+
+    .actions-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .separator {
+        display: none;
+    }
+
+    .btn {
+        width: 100%;
+        text-align: center;
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+    }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+    body {
+        background: white;
+    }
+
+    .wrapper {
+        background: white;
+    }
+
+    .btn-add-patient,
+    .signature-button,
+    .actions-cell .btn-primary {
+        display: none;
+    }
+
+    .container {
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .patient-list-table {
+        page-break-inside: avoid;
+    }
+
+    .metric-card,
+    .chart-card,
+    .patient-list-section {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+}/* ========================================
+   DASHBOARD CONTAINER & SIDEBAR STYLES
+   ======================================== */
+
+/* Dashboard Container with Sidebar */
+.dashboard-container {
+    display: flex;
+    gap: 2rem;
+    width: 100%;
+}
+
+.dashboard-content {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    min-width: 280px;
+    background-color: #cdcfc0;
+    padding: 2rem 1.5rem;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+    animation: slideInLeft 0.4s ease;
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.filter-section h3,
+.quick-actions h3 {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--primary);
+}
+
+.filter-group {
+    margin-bottom: 1.5rem;
+}
+
+.filter-group label {
+    display: block;
+    font-family: "Cormorant Garamond", serif;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+.filter-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--primary);
+    border-radius: 5px;
+    font-size: 0.95rem;
+    font-family: "Cormorant Garamond", serif;
+    transition: all 0.3s ease;
+    background: #f1ebe5;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #ffffff;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-family: "Cormorant Garamond", serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.apply-filters-btn {
+    width: 100%;
+    background-color: var(--secondary);
+    color: var(--primary);
+    border: 2px solid var(--primary);
+    padding: 0.875rem;
+    border-radius: 5px;
+    font-family: "Cormorant Garamond", serif;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+}
+
+.apply-filters-btn:hover {
+    background-color: var(--primary);
+    color: var(--secondary);
+    transform: translateY(-2px);
+    box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.3);
+}
+
+.quick-actions {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid var(--primary);
+}
+
+.action-btn {
+    width: 100%;
+    background-color: #f1ebe5;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 0.875rem;
+    border-radius: 5px;
+    font-family: "Cormorant Garamond", serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.action-btn:hover {
+    background-color: var(--primary);
+    color: var(--secondary);
+    transform: translateX(5px);
+}
+
+.action-btn i {
+    font-size: 1rem;
+}
+
+/* Responsive Sidebar */
+@media screen and (max-width: 1200px) {
+    .sidebar {
+        width: 240px;
+        min-width: 240px;
+        padding: 1.5rem 1rem;
+    }
+}
+
+@media screen and (max-width: 992px) {
+    .dashboard-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-width: 100%;
+        position: static;
+        margin-bottom: 2rem;
+    }
 }
