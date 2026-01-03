@@ -109,8 +109,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
                     <a href="">
                         <button type="submit" name="submit">SIGN IN</button>
                     </a>
+                    <div><center><a href="./forgot-pass.php">Forgot Password?</a></center></div>
                     <div class="divider-hide"></div>
-
                     <div class="social-login">
                         <div class="social-btn">
                             <i class="fa-brands fa-square-facebook"></i>

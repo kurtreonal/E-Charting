@@ -260,9 +260,6 @@ body {
     background-color: #cdcfc0;
 }
 
-/* ========================================
-   RESPONSIVE
-   ======================================== */
 @media (max-width: 768px) {
     .wrapper {
         width: 95%;

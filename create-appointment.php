@@ -1,14 +1,10 @@
 <?php
-session_name('nurse_session');
-session_start();
+include 'authcheck.php';
+include_once 'includes/activity-logger.php';
 include 'connection.php';
 include_once 'includes/notification.php';
 
 //require nurse login
-if (!isset($_SESSION['nurse_id'])) {
-    header('Location: admin-login.php');
-    exit();
-}
 $nurse_id = (int) $_SESSION['nurse_id'];
 
 //check patient_id
@@ -131,6 +127,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     date("F j, Y", strtotime($appt_date)),
                     date("g:i A", strtotime($appt_time))
                 );
+
+                // Log activity
+                $appt_date_display = date("F j, Y", strtotime($appt_date));
+                $appt_time_display = date("g:i A", strtotime($appt_time));
+                log_activity(
+                    $con,
+                    $nurse_id,
+                    'appointment_created',
+                    "Created appointment for $patientNameText on $appt_date_display at $appt_time_display",
+                    $patient_id,
+                    'appointment',
+                    $appointment_id,
+                    [],
+                    ['appointment_date' => $appt_date, 'appointment_time' => $appt_time]
+                );
+
                 header("Location: adm-patient-list.php?patient_id=" . $patient_id);
                 exit();
 

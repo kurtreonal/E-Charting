@@ -1,7 +1,7 @@
 <?php
 session_name('nurse_session');
 session_start();
-
+include_once 'includes/activity-logger.php';
 include "./connection.php";
 
 $error = "";

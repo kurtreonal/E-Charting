@@ -1,14 +1,10 @@
 <?php
+include 'authcheck.php';
+include_once 'includes/activity-logger.php';
 include 'connection.php';
-session_name('nurse_session');
-session_start();
 
-$nurse_id = isset($_SESSION['nurse_id']) ? $_SESSION['nurse_id'] : null;
-
-if (!$nurse_id) {
-    header("Location: admin-login.php");
-    exit();
-}
+// Get nurse_id from session
+$nurse_id = isset($_SESSION['nurse_id']) ? (int)$_SESSION['nurse_id'] : 0;
 
 $patient_id = isset($_GET['patient_id']) ? (int)$_GET['patient_id'] : 0;
 
@@ -104,6 +100,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success_message = $is_readmission
                 ? "Patient successfully readmitted! This is admission #" . ($admission_count + 1)
                 : "Patient successfully admitted!";
+
+                    // === LOG ACTIVITY ===
+                    // Get patient name
+                    $name_query = $con->query("
+                        SELECT u.first_name, u.middle_name, u.last_name
+                        FROM patients p
+                        JOIN users u ON p.user_id = u.user_id
+                        WHERE p.patient_id = $patient_id
+                    ");
+                    if ($name_query && $name_row = $name_query->fetch_assoc()) {
+                        $patient_full_name = trim($name_row['first_name'] . ' ' .
+                                                ($name_row['middle_name'] ? $name_row['middle_name'] . ' ' : '') .
+                                                $name_row['last_name']);
+
+                        log_activity(
+                            $con,
+                            $nurse_id,
+                            'patient_admitted',
+                            "Admitted patient: $patient_full_name - $instructed (Mode: $mode_of_arrival)",
+                            $patient_id,
+                            'admission_data',
+                            $admission_data_id
+                        );
+                    }
 
             // Redirect after 2 seconds
             header("refresh:2;url=adm-patient-list.php");

@@ -1,16 +1,11 @@
 <?php
+include 'authcheck.php';
+
 include 'connection.php';
 include_once 'includes/notification.php';
-session_name('nurse_session');
-session_start();
-
-// Get the nurse_id from session
+include_once 'includes/activity-logger.php';
 $nurse_id = isset($_SESSION['nurse_id']) ? $_SESSION['nurse_id'] : null;
 
-if (!$nurse_id) {
-    header("Location: admin-login.php");
-    exit();
-}
 
 // Fetch patients for the patient list section
 $sql = "
@@ -60,8 +55,35 @@ $medication_adherence = $total_med_notifs > 0 ? round(($confirmed_med_notifs / $
 $notifications = fetch_notifications_for_nurse($con, $nurse_id, null, 50);
 $unread_count = count(array_filter($notifications, function($n) { return $n['is_read'] == 0; }));
 
+// Fetch activity logs for Reports section
+$activity_logs = get_activity_logs($con, null, null, null, 30);
+
+// Fetch recent admissions for Reports section
+$history_sql = "
+    SELECT
+        u.first_name, u.middle_name, u.last_name,
+        a.admission_date, a.admission_time, a.mode_of_arrival, a.instructed,
+        a.admission_data_id,
+        p.patient_status
+    FROM admission_data a
+    JOIN patients p ON a.patient_id = p.patient_id
+    JOIN users u ON p.user_id = u.user_id
+    ORDER BY a.admission_date DESC, a.admission_time DESC
+    LIMIT 10
+";
+
+$history_result = $con->query($history_sql);
+$history_records = [];
+
+if ($history_result && $history_result->num_rows > 0) {
+    while($row = $history_result->fetch_assoc()) {
+        $history_records[] = $row;
+    }
+}
+
 $con->close();
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -76,7 +98,8 @@ $con->close();
 <body>
     <?php include "adm-nav.php"; ?>
     <!-- Main Content -->
-    <div class="dashboard-container">
+    <div class="wrapper">
+        <div class="dashboard-container">
         <!-- Sidebar Filters -->
         <aside class="sidebar">
             <div class="filter-section">
@@ -113,7 +136,7 @@ $con->close();
                 </div>
 
                 <div class="filter-group">
-                    <label>Department</label>
+                    <label>Patient Instructions</label>
                     <select class="filter-select">
                         <option>All Departments</option>
                         <option>Emergency</option>
@@ -142,6 +165,7 @@ $con->close();
 
         <!-- Main Dashboard Content -->
         <main class="dashboard-content">
+            <div class="container">
             <!-- Navigation Tabs for Dashboard Sections -->
             <div class="dashboard-nav-tabs">
                 <button class="dashboard-tab active" data-section="overview">
@@ -311,10 +335,6 @@ $con->close();
                                 <span class="stat-label">Avg Response Time</span>
                                 <span class="stat-value">8 min</span>
                             </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Performance Score</span>
-                                <span class="stat-value highlight">96%</span>
-                            </div>
                         </div>
                         <div class="performance-badge excellent">
                             <i class="fas fa-trophy"></i> Top Performer
@@ -344,10 +364,6 @@ $con->close();
                                 <span class="stat-label">Avg Response Time</span>
                                 <span class="stat-value">10 min</span>
                             </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Performance Score</span>
-                                <span class="stat-value highlight">92%</span>
-                            </div>
                         </div>
                         <div class="performance-badge good">
                             <i class="fas fa-star"></i> Excellent
@@ -376,10 +392,6 @@ $con->close();
                             <div class="stat-item">
                                 <span class="stat-label">Avg Response Time</span>
                                 <span class="stat-value">6 min</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Performance Score</span>
-                                <span class="stat-value highlight">98%</span>
                             </div>
                         </div>
                         <div class="performance-badge excellent">
@@ -427,137 +439,114 @@ $con->close();
                     <p class="section-subtitle">Generate comprehensive reports and analytics</p>
                 </div>
 
-                <!-- Report Templates -->
-                <div class="report-templates">
-                    <div class="report-card" data-animate="fade-up">
-                        <div class="report-icon">
-                            <i class="fas fa-file-medical"></i>
-                        </div>
-                        <h3>Patient Summary Report</h3>
-                        <p>Comprehensive patient data including admissions, treatments, and outcomes</p>
-                        <button class="generate-report-btn">Generate Report</button>
-                    </div>
-
-                    <div class="report-card" data-animate="fade-up" style="animation-delay: 0.1s">
-                        <div class="report-icon">
-                            <i class="fas fa-chart-bar"></i>
-                        </div>
-                        <h3>Performance Analytics</h3>
-                        <p>Detailed nursing staff performance metrics and KPIs</p>
-                        <button class="generate-report-btn">Generate Report</button>
-                    </div>
-
-                    <div class="report-card" data-animate="fade-up" style="animation-delay: 0.2s">
-                        <div class="report-icon">
-                            <i class="fas fa-pills"></i>
-                        </div>
-                        <h3>Medication Compliance</h3>
-                        <p>Track medication adherence rates and patient compliance</p>
-                        <button class="generate-report-btn">Generate Report</button>
-                    </div>
-
-                    <div class="report-card" data-animate="fade-up" style="animation-delay: 0.3s">
-                        <div class="report-icon">
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                        <h3>Monthly Summary</h3>
-                        <p>Complete monthly overview of all system activities</p>
-                        <button class="generate-report-btn">Generate Report</button>
-                    </div>
-
-                    <div class="report-card" data-animate="fade-up" style="animation-delay: 0.4s">
-                        <div class="report-icon">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <h3>Critical Incidents</h3>
-                        <p>Report on critical events and emergency responses</p>
-                        <button class="generate-report-btn">Generate Report</button>
-                    </div>
-
-                    <div class="report-card" data-animate="fade-up" style="animation-delay: 0.5s">
-                        <div class="report-icon">
-                            <i class="fas fa-cog"></i>
-                        </div>
-                        <h3>Custom Report Builder</h3>
-                        <p>Create custom reports with selected metrics and date ranges</p>
-                        <button class="generate-report-btn primary">Build Custom Report</button>
-                    </div>
-                </div>
-
-                <!-- Recent Reports Table -->
-                <div class="recent-reports" data-animate="fade-up">
-                    <h3>Recent Reports</h3>
-                    <table class="reports-table">
+                <!-- Activity Log - All Nurse Actions -->
+                <div class="recent-reports" data-animate="fade-up" style="margin-bottom: 2rem;">
+                    <h3><i class="fas fa-clipboard-list"></i> Activity Log</h3>
+                    <p class="section-description">All nurse actions and system activities</p>
+                    <table class="reports-table activity-table">
                         <thead>
                             <tr>
-                                <th>Report Name</th>
-                                <th>Type</th>
-                                <th>Generated By</th>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th style="width: 40px;"></th>
+                                <th>Action</th>
+                                <th>Description</th>
+                                <th>Nurse</th>
+                                <th>Patient</th>
+                                <th>Date & Time</th>
                             </tr>
                         </thead>
                         <tbody>
+                            <?php if (count($activity_logs) > 0): ?>
+                                <?php foreach($activity_logs as $log): ?>
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <i class="fas <?php echo get_action_icon($log['action_type']); ?>"
+                                           style="color: <?php echo get_action_color($log['action_type']); ?>; font-size: 18px;"
+                                           title="<?php echo format_action_type($log['action_type']); ?>"></i>
+                                    </td>
+                                    <td>
+                                        <strong style="color: <?php echo get_action_color($log['action_type']); ?>;">
+                                            <?php echo format_action_type($log['action_type']); ?>
+                                        </strong>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($log['action_description']); ?></td>
+                                    <td><span class="nurse-name"><?php echo htmlspecialchars($log['nurse_name']); ?></span></td>
+                                    <td>
+                                        <?php if ($log['patient_name']): ?>
+                                            <span class="patient-name"><?php echo htmlspecialchars($log['patient_name']); ?></span>
+                                        <?php else: ?>
+                                            <span style="color: #999;">N/A</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php
+                                        $timestamp = strtotime($log['created_at']);
+                                        $time_ago = time() - $timestamp;
+
+                                        if ($time_ago < 60) {
+                                            echo "Just now";
+                                        } elseif ($time_ago < 3600) {
+                                            echo floor($time_ago / 60) . " min ago";
+                                        } elseif ($time_ago < 86400) {
+                                            echo floor($time_ago / 3600) . " hours ago";
+                                        } else {
+                                            echo date('M j, Y g:i A', $timestamp);
+                                        }
+                                        ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 20px; color: #999;">
+                                        <i class="fas fa-info-circle"></i> No activity recorded yet. Actions will appear here as nurses work in the system.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Recent Patient Admissions & Readmissions -->
+                <div class="recent-reports" data-animate="fade-up">
+                    <h3><i class="fas fa-hospital-user"></i> Recent Patient Admissions & Readmissions</h3>
+                    <p class="section-description">Latest patient admissions to the hospital</p>
+                    <table class="reports-table">
+                        <thead>
                             <tr>
-                                <td>Monthly Patient Summary - November 2024</td>
-                                <td><span class="report-type patient">Patient</span></td>
-                                <td>Admin User</td>
-                                <td>Dec 1, 2024</td>
-                                <td><span class="status-badge completed">Completed</span></td>
-                                <td>
-                                    <button class="action-icon-btn" title="Download">
-                                        <i class="fas fa-download"></i>
-                                    </button>
-                                    <button class="action-icon-btn" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="action-icon-btn" title="Share">
-                                        <i class="fas fa-share"></i>
-                                    </button>
-                                </td>
+                                <th>Patient Name</th>
+                                <th>Admission Date</th>
+                                <th>Time</th>
+                                <th>Mode of Arrival</th>
+                                <th>Instructed</th>
+                                <th>Current Status</th>
                             </tr>
-                            <tr>
-                                <td>Nurse Performance Q4 2024</td>
-                                <td><span class="report-type performance">Performance</span></td>
-                                <td>Nurse Manager</td>
-                                <td>Nov 28, 2024</td>
-                                <td><span class="status-badge completed">Completed</span></td>
-                                <td>
-                                    <button class="action-icon-btn" title="Download">
-                                        <i class="fas fa-download"></i>
-                                    </button>
-                                    <button class="action-icon-btn" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="action-icon-btn" title="Share">
-                                        <i class="fas fa-share"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Medication Adherence Report</td>
-                                <td><span class="report-type medication">Medication</span></td>
-                                <td>System Generated</td>
-                                <td>Nov 25, 2024</td>
-                                <td><span class="status-badge processing">Processing</span></td>
-                                <td>
-                                    <button class="action-icon-btn disabled" title="Download">
-                                        <i class="fas fa-download"></i>
-                                    </button>
-                                    <button class="action-icon-btn" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="action-icon-btn disabled" title="Share">
-                                        <i class="fas fa-share"></i>
-                                    </button>
-                                </td>
-                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($history_records) > 0): ?>
+                                <?php foreach($history_records as $record): ?>
+                                <tr>
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($record['first_name'] . ' ' . ($record['middle_name'] ? $record['middle_name'] . ' ' : '') . $record['last_name']); ?></strong>
+                                    </td>
+                                    <td><?php echo date('M j, Y', strtotime($record['admission_date'])); ?></td>
+                                    <td><?php echo date('g:i A', strtotime($record['admission_time'])); ?></td>
+                                    <td><span class="arrival-mode"><?php echo ucfirst($record['mode_of_arrival']); ?></span></td>
+                                    <td><span class="instruction-type"><?php echo ucwords(str_replace('-', ' ', $record['instructed'])); ?></span></td>
+                                    <td><span class="status-badge status-<?php echo strtolower(str_replace('-', '', $record['patient_status'] ?? 'active')); ?>"><?php echo htmlspecialchars($record['patient_status'] ?? 'N/A'); ?></span></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 20px;">No admission history found.</td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </section>
+            </div>
         </main>
+        </div>
     </div>
 
     <!-- Chart.js Library -->

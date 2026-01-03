@@ -1,4 +1,5 @@
 <?php
+    include_once 'authcheck.php';
     include 'connection.php';
     include_once 'includes/notification.php';
 

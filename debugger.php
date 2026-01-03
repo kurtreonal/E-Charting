@@ -253,3 +253,103 @@ echo "<a href='clear_all_sessions.php' style='color:#f00;'>→ Clear All Session
 echo "<a href='debugger.php' style='color:#0ff;'>→ Simple Debug</a></p>";
 echo "</body></html>";
 ?>
+
+<?php
+/**
+ * TEST ACTIVITY LOGGING
+ * Run this file to test if activity logging is working
+ * Visit: http://localhost/E-Charting/test-activity-log.php
+ */
+
+include 'connection.php';
+include_once './includes/activity-logger.php';
+
+echo "<h1>Activity Logging Test</h1>";
+
+// Test 1: Check if table exists
+echo "<h2>Test 1: Check if activity_log table exists</h2>";
+$result = $con->query("SHOW TABLES LIKE 'activity_log'");
+if ($result && $result->num_rows > 0) {
+    echo "<p style='color: green;'>✅ Table exists!</p>";
+} else {
+    echo "<p style='color: red;'>❌ Table does NOT exist! Run CREATE_ACTIVITY_LOG_TABLE.sql first!</p>";
+    exit;
+}
+
+// Test 2: Try to log an activity
+echo "<h2>Test 2: Try to log a test activity</h2>";
+
+// Use nurse_id = 1 (change to a valid nurse_id from your database)
+$test_nurse_id = 1;
+$result = log_activity(
+    $con,
+    $test_nurse_id,
+    'test',
+    'Testing activity logging system',
+    null,
+    'test',
+    1
+);
+
+if ($result) {
+    echo "<p style='color: green;'>✅ Activity logged successfully!</p>";
+} else {
+    echo "<p style='color: red;'>❌ Failed to log activity. Check error_log.</p>";
+}
+
+// Test 3: Retrieve recent logs
+echo "<h2>Test 3: Retrieve recent activity logs</h2>";
+$logs = get_activity_logs($con, null, null, null, 10);
+
+if (count($logs) > 0) {
+    echo "<p style='color: green;'>✅ Found " . count($logs) . " activity logs!</p>";
+    echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+    echo "<tr style='background-color: #f2f2f2;'>";
+    echo "<th>ID</th><th>Action</th><th>Description</th><th>Nurse</th><th>Patient</th><th>Date</th>";
+    echo "</tr>";
+
+    foreach ($logs as $log) {
+        echo "<tr>";
+        echo "<td>" . $log['log_id'] . "</td>";
+        echo "<td>" . format_action_type($log['action_type']) . "</td>";
+        echo "<td>" . htmlspecialchars($log['action_description']) . "</td>";
+        echo "<td>" . htmlspecialchars($log['nurse_name']) . "</td>";
+        echo "<td>" . ($log['patient_name'] ? htmlspecialchars($log['patient_name']) : 'N/A') . "</td>";
+        echo "<td>" . $log['created_at'] . "</td>";
+        echo "</tr>";
+    }
+    echo "</table>";
+} else {
+    echo "<p style='color: orange;'>⚠️ No activity logs found yet. This is normal if you just set it up.</p>";
+}
+
+// Test 4: Check database connection
+echo "<h2>Test 4: Database Connection</h2>";
+if ($con && $con->ping()) {
+    echo "<p style='color: green;'>✅ Database connected!</p>";
+} else {
+    echo "<p style='color: red;'>❌ Database connection failed!</p>";
+}
+
+// Test 5: Check if nurses exist
+echo "<h2>Test 5: Check if nurses exist</h2>";
+$nurse_result = $con->query("SELECT COUNT(*) as count FROM nurse");
+if ($nurse_result) {
+    $nurse_count = $nurse_result->fetch_assoc()['count'];
+    if ($nurse_count > 0) {
+        echo "<p style='color: green;'>✅ Found $nurse_count nurse(s) in database!</p>";
+    } else {
+        echo "<p style='color: orange;'>⚠️ No nurses found. Create a nurse account first!</p>";
+    }
+}
+
+echo "<hr>";
+echo "<h3>Next Steps:</h3>";
+echo "<ol>";
+echo "<li>If all tests pass, the system is working!</li>";
+echo "<li>Now add log_activity() calls to your files (see integration guide)</li>";
+echo "<li>Visit analytics-dashboard.php to see activity logs</li>";
+echo "</ol>";
+
+$con->close();
+?>

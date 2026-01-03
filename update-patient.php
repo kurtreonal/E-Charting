@@ -1,11 +1,9 @@
 <?php
-//database connection
+include 'authcheck.php';
+include_once 'includes/activity-logger.php';
 include 'connection.php';
-session_name('nurse_session');
-session_start();
 
 if (!isset($_SESSION["is_nurse"]) || $_SESSION["is_nurse"] !== true) {
-    header("Location: admin-login.php");
     exit();
 }
 
@@ -214,6 +212,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
         if (!empty($$field) && !is_numeric($$field)) {
             $errors[] = ucfirst($field) . " must be numeric.";
         }
+    }
+
+    // CRITICAL: Prevent changing status of deceased patients
+    if ($patient_data['patient_status'] === 'deceased' && $patient_status !== 'deceased') {
+        $errors[] = "Cannot change the status of a deceased patient. Deceased patient status cannot be changed.";
     }
 
     if (!empty($errors)) {
@@ -437,7 +440,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
 
             // Commit transaction
             $con->commit();
-            $success = "Patient record updated successfully!";
+
+            // ====================================================================
+            // SEND UPDATE NOTIFICATION EMAIL
+            // ====================================================================
+            if (file_exists('email-functions.php')) {
+                require_once 'email-functions.php';
+
+                // Prepare patient full name
+                $full_name = trim($first_name . ' ' . ($middle_name ? $middle_name . ' ' : '') . $last_name);
+
+                // Send update notification email (not welcome email)
+                $email_result = sendPatientUpdateEmail($email, $full_name, $patient_id);
+
+                if ($email_result['success']) {
+                    $success = "Patient record updated successfully!<br>✅ Update notification sent to: " . $email;
+                } else {
+                    $success = "Patient record updated successfully!<br>⚠️ Email notification failed: " . $email_result['message'];
+                }
+            } else {
+                $success = "Patient record updated successfully!";
+
+                    // === LOG ACTIVITY ===
+                $patient_full_name = trim($first_name . ' ' . ($middle_name ? $middle_name . ' ' : '') . $last_name);
+                log_activity(
+                    $con,
+                    $nurse_id,
+                    'patient_updated',
+                    "Updated patient: $patient_full_name",
+                    $patient_id,
+                    'patients',
+                    $patient_id
+                );
+            }
+            // ====================================================================
 
             // Refresh patient data after successful update
             $stmt = $con->prepare("
@@ -625,9 +661,15 @@ function isChecked($field, $value) {
 
                     <div class="form-group">
                         <span>Patient Status</span>
+                        <?php if ($patient_data['patient_status'] === 'deceased'): ?>
+                            <div style="background-color: #fff3cd; border: 2px solid #856404; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                                <strong style="color: #856404;"><i class="fas fa-exclamation-triangle"></i> Warning:</strong>
+                                <span style="color: #856404;">Deceased patient status cannot be changed.</span>
+                            </div>
+                        <?php endif; ?>
                         <div class="radio-group">
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
-                                <label for="out-patient" class="item">
+                                <label for="out-patient" class="item" <?php if ($patient_data['patient_status'] === 'deceased') echo 'style="opacity: 0.5; pointer-events: none;"'; ?>>
                                     <input type="radio" id="out-patient" name="patient_status" value="out-patient" class="hidden toggle-radio" <?php echo isChecked('patient_status', 'out-patient'); ?>/>
                                     <label for="out-patient" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
@@ -639,7 +681,7 @@ function isChecked($field, $value) {
                             </div>
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
-                                <label for="in-patient" class="item">
+                                <label for="in-patient" class="item" <?php if ($patient_data['patient_status'] === 'deceased') echo 'style="opacity: 0.5; pointer-events: none;"'; ?>>
                                     <input type="radio" id="in-patient" name="patient_status" value="in-patient" class="hidden toggle-radio" <?php echo isChecked('patient_status', 'in-patient'); ?>/>
                                     <label for="in-patient" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">
@@ -651,7 +693,7 @@ function isChecked($field, $value) {
                             </div>
 
                             <div class="checkbox-wrapper-52" style="min-width: 40px;">
-                                <label for="active" class="item">
+                                <label for="active" class="item" <?php if ($patient_data['patient_status'] === 'deceased') echo 'style="opacity: 0.5; pointer-events: none;"'; ?>>
                                     <input type="radio" id="active" name="patient_status" value="active" class="hidden toggle-radio" <?php echo isChecked('patient_status', 'active'); ?>/>
                                     <label for="active" class="cbx">
                                         <svg width="14px" height="12px" viewBox="0 0 14 12">

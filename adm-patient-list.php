@@ -1,17 +1,15 @@
 <?php
+include 'authcheck.php';
+
 include 'connection.php';
 include_once 'includes/notification.php';
+include_once 'includes/activity-logger.php';
 include_once 'includes/patient-metrics.php';
-session_name('nurse_session');
-session_start();
 
-//get the nurse_id from session
-$nurse_id = isset($_SESSION['nurse_id']) ? $_SESSION['nurse_id'] : null;
-
-if (!$nurse_id) {
-    header("Location: admin-login.php");
-    exit();
-}
+// Get filter parameters
+$date_range = isset($_GET['date_range']) ? $_GET['date_range'] : '30';
+$instructed_filter = isset($_GET['instructed']) ? $_GET['instructed'] : '';
+$status_filter = isset($_GET['statuses']) ? explode(',', $_GET['statuses']) : [];
 
 // Calculate metrics using existing data
 $avg_length_of_stay = calculate_average_length_of_stay($con);
@@ -23,15 +21,73 @@ $patient_satisfaction = calculate_patient_satisfaction($con);
 $age_distribution = get_age_distribution($con);
 $gender_distribution = get_gender_distribution($con);
 
-// Fetch all patients
+// Fetch UNIQUE patients with filtering
 $sql = "
-    SELECT usr.first_name, usr.middle_name, usr.last_name, p.patient_id, p.patient_status
+    SELECT DISTINCT usr.first_name, usr.middle_name, usr.last_name, p.patient_id, p.patient_status
     FROM patients p
     LEFT JOIN users usr ON p.user_id = usr.user_id
-    ORDER BY usr.first_name ASC
+    WHERE 1=1
 ";
 
-$result = $con->query($sql);
+$conditions = [];
+$params = [];
+$param_types = '';
+
+// Date range filter
+if ($date_range !== 'all' && !empty($date_range)) {
+    $days = (int)$date_range;
+    $conditions[] = "p.patient_id IN (
+        SELECT DISTINCT patient_id
+        FROM admission_data
+        WHERE admission_date >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+    )";
+}
+
+// Instructed filter
+if (!empty($instructed_filter)) {
+    $conditions[] = "p.patient_id IN (
+        SELECT DISTINCT patient_id
+        FROM admission_data
+        WHERE instructed = ?
+    )";
+    $params[] = $instructed_filter;
+    $param_types .= 's';
+}
+
+// Patient status filter
+if (!empty($status_filter)) {
+    $status_placeholders = [];
+    foreach ($status_filter as $status) {
+        $db_status = trim($status);
+        if (in_array($db_status, ['active', 'in-patient', 'out-patient', 'deceased'])) {
+            $status_placeholders[] = '?';
+            $params[] = $db_status;
+            $param_types .= 's';
+        }
+    }
+
+    if (!empty($status_placeholders)) {
+        $conditions[] = "p.patient_status IN (" . implode(',', $status_placeholders) . ")";
+    }
+}
+
+if (!empty($conditions)) {
+    $sql .= " AND " . implode(" AND ", $conditions);
+}
+
+$sql .= " ORDER BY usr.first_name ASC";
+
+// Execute query
+if (!empty($params)) {
+    $stmt = $con->prepare($sql);
+    $stmt->bind_param($param_types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+} else {
+    $result = $con->query($sql);
+}
+
 $patients = [];
 
 if ($result && $result->num_rows > 0) {
@@ -67,12 +123,12 @@ $con->close();
                     <div class="filter-group">
                         <label>Date Range</label>
                         <select class="filter-select" id="dateRangeFilter">
-                            <option>Last 7 Days</option>
-                            <option selected>Last 30 Days</option>
-                            <option>Last 3 Months</option>
-                            <option>Last 6 Months</option>
-                            <option>Last Year</option>
-                            <option>Custom Range</option>
+                            <option value="7" <?php echo $date_range == '7' ? 'selected' : ''; ?>>Last 7 Days</option>
+                            <option value="30" <?php echo $date_range == '30' ? 'selected' : ''; ?>>Last 30 Days</option>
+                            <option value="90" <?php echo $date_range == '90' ? 'selected' : ''; ?>>Last 3 Months</option>
+                            <option value="180" <?php echo $date_range == '180' ? 'selected' : ''; ?>>Last 6 Months</option>
+                            <option value="365" <?php echo $date_range == '365' ? 'selected' : ''; ?>>Last Year</option>
+                            <option value="all" <?php echo $date_range == 'all' ? 'selected' : ''; ?>>All Time</option>
                         </select>
                     </div>
 
@@ -97,11 +153,11 @@ $con->close();
                     <div class="filter-group">
                         <label>Patient Instructed</label>
                         <select class="filter-select" id="instructedFilter">
-                            <option value="">All Instructions</option>
-                            <option value="wardset">Ward Set</option>
-                            <option value="medication">Medication</option>
-                            <option value="hospital-rules">Hospital Rules</option>
-                            <option value="special">Special Procedure</option>
+                            <option value="" <?php echo $instructed_filter == '' ? 'selected' : ''; ?>>All Instructions</option>
+                            <option value="wardset" <?php echo $instructed_filter == 'wardset' ? 'selected' : ''; ?>>Ward Set</option>
+                            <option value="medication" <?php echo $instructed_filter == 'medication' ? 'selected' : ''; ?>>Medication</option>
+                            <option value="hospital-rules" <?php echo $instructed_filter == 'hospital-rules' ? 'selected' : ''; ?>>Hospital Rules</option>
+                            <option value="special" <?php echo $instructed_filter == 'special' ? 'selected' : ''; ?>>Special Procedure</option>
                         </select>
                     </div>
 
@@ -176,7 +232,7 @@ $con->close();
 
                         <div class="metric-card" data-animate="fade-up" style="animation-delay: 0.2s">
                             <div class="metric-header">
-                                <h4>Readmission Rate</h4>
+                                <h4>Re-admission Rate</h4>
                                 <i class="fas fa-redo metric-icon"></i>
                             </div>
                             <div class="metric-value">
@@ -234,6 +290,7 @@ $con->close();
                     <div class="patient-list-section" data-animate="fade-up">
                         <div class="patient-list-header">
                             <h3>Patient List</h3>
+                            <p class="list-info">Showing unique patients (<?php echo count($patients); ?> total)</p>
                         </div>
 
                         <table class="patient-list-table">
@@ -247,13 +304,21 @@ $con->close();
                             <tbody id="patientTableBody">
                                 <?php if (count($patients) > 0): ?>
                                     <?php foreach($patients as $patient): ?>
-                                    <tr data-status="<?php echo strtolower(str_replace('-', '', $patient['patient_status'] ?? 'active')); ?>">
+                                    <tr data-patient-id="<?php echo (int)$patient['patient_id']; ?>" data-status="<?php echo strtolower(str_replace('-', '', $patient['patient_status'] ?? 'active')); ?>">
                                         <td><?php echo htmlspecialchars($patient['first_name'] . ' ' . ($patient['middle_name'] ? $patient['middle_name'] . ' ' : '') . $patient['last_name']); ?></td>
                                         <td><span class="status-badge status-<?php echo strtolower(str_replace('-', '', $patient['patient_status'] ?? 'active')); ?>"><?php echo htmlspecialchars($patient['patient_status'] ?? 'N/A'); ?></span></td>
                                         <td class="actions-cell">
-                                            <a href="create-appointment.php?patient_id=<?php echo (int)$patient['patient_id']; ?>" class="btn btn-primary" aria-label="Create appointment for <?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?>">Create Appointment</a>
+                                            <?php if ($patient['patient_status'] === 'deceased'): ?>
+                                                <span class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed; pointer-events: none;" title="Cannot create appointment for deceased patient">Create Appointment</span>
+                                            <?php else: ?>
+                                                <a href="create-appointment.php?patient_id=<?php echo (int)$patient['patient_id']; ?>" class="btn btn-primary" aria-label="Create appointment for <?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?>">Create Appointment</a>
+                                            <?php endif; ?>
                                             <span class="separator">|</span>
-                                            <a href="admit-patient.php?patient_id=<?php echo (int)$patient['patient_id']; ?>" class="btn btn-success" aria-label="Admit patient <?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?>">Admit Patient</a>
+                                            <?php if ($patient['patient_status'] === 'deceased'): ?>
+                                                <span class="btn btn-success" style="opacity: 0.5; cursor: not-allowed; pointer-events: none;" title="Cannot admit deceased patient">Admit Patient</span>
+                                            <?php else: ?>
+                                                <a href="admit-patient.php?patient_id=<?php echo (int)$patient['patient_id']; ?>" class="btn btn-success" aria-label="Admit patient <?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?>">Admit Patient</a>
+                                            <?php endif; ?>
                                             <span class="separator">|</span>
                                             <a href="update-patient.php?id=<?php echo (int)$patient['patient_id']; ?>" class="btn btn-secondary">Edit</a>
                                         </td>

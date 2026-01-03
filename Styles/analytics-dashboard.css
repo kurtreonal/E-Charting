@@ -58,6 +58,23 @@ body {
 }
 
 /* ========================================
+   WRAPPER & CONTAINER (Matching adm-patient-list)
+   ======================================== */
+
+.wrapper {
+    background-color: #f1ebe5;
+    width: 98%;
+    margin: 1rem auto;
+    padding: 2rem;
+    border-radius: 12px;
+}
+
+.container {
+    width: 100%;
+    padding: 0 1rem;
+}
+
+/* ========================================
    DASHBOARD NAVIGATION TABS
    ======================================== */
 
@@ -135,10 +152,16 @@ body {
 
 .sidebar {
     width: 280px;
-    background: var(--bg-secondary);
+    min-width: 280px;
+    background-color: #cdcfc0;
     padding: 2rem 1.5rem;
-    box-shadow: var(--shadow-sm);
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
     animation: slideInLeft 0.4s ease;
+    height: fit-content;
+    position: sticky;
+    top: 100px;
 }
 
 @keyframes slideInLeft {
@@ -282,13 +305,18 @@ body {
 }
 
 .section-header {
+    align-items: center;
     margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--primary);
 }
 
 .section-header h2 {
-    font-size: 2rem;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    font-family: "Cormorant Garamond", serif;
+    color: var(--primary);
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
 }
 
 .section-subtitle {
@@ -297,27 +325,28 @@ body {
 }
 
 /* ========================================
-   KPI CARDS
+   KPI CARDS (Styled like adm-patient-list metric cards)
    ======================================== */
 
 .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
 
 .kpi-card {
-    background: var(--bg-secondary);
     padding: 1.75rem;
-    border-radius: 12px;
-    box-shadow: var(--shadow-md);
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
     transition: var(--transition-base);
     opacity: 0;
     animation: fadeUp 0.6s ease forwards;
+    display: flex;
+    flex-direction: column;
+    background-color: #cdcfc0;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    transform: translateY(20px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes fadeUp {
@@ -340,15 +369,17 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
-.kpi-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
+/* KPI Header - with Icon */
+.kpi-card .kpi-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     color: white;
+    align-self: flex-end;
 }
 
 .kpi-icon.patients {
@@ -367,6 +398,7 @@ body {
     background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
+/* KPI Content */
 .kpi-content {
     flex: 1;
 }
@@ -929,12 +961,34 @@ body {
    ======================================== */
 
 .recent-reports {
-    background: var(--bg-secondary);
-    padding: 2rem;
-    border-radius: 12px;
+    background-color: #cdcfc0;
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 1.5rem;
     box-shadow: var(--shadow-md);
     opacity: 0;
     animation: fadeUp 0.6s ease forwards;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* Scrollbar styling for activity log */
+.recent-reports::-webkit-scrollbar {
+    width: 8px;
+}
+
+.recent-reports::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 8px;
+}
+
+.recent-reports::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 8px;
+}
+
+.recent-reports::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 .recent-reports h3 {

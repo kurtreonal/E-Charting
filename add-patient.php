@@ -1,14 +1,9 @@
 <?php
-//connection
-include 'connection.php';
-session_name('nurse_session');
-session_start();
+include 'authcheck.php';
+include_once 'includes/activity-logger.php';
+$nurse_id = $_SESSION['nurse_id'];
 
-//only nurse
-if (!isset($_SESSION["is_nurse"]) || $_SESSION["is_nurse"] !== true) {
-    header("Location: admin-login.php");
-    exit();
-}
+include 'connection.php';
 
 //error/success messages
 $error = "";
@@ -304,6 +299,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             $con->commit();
             $success = "Patient record created successfully! Patient ID: " . $patient_id . "<br>" . $med_calc_msg;
 
+                // === LOG ACTIVITY ===
+            $patient_full_name = trim($first_name . ' ' . ($middle_name ? $middle_name . ' ' : '') . $last_name);
+            log_activity(
+                $con,
+                $nurse_id,
+                'patient_created',
+                "Created new patient: $patient_full_name (ID: $patient_id)",
+                $patient_id,
+                'patients',
+                $patient_id
+            );
+
+            require_once 'email-functions.php';
+            $full_name = trim($first_name . ' ' . ($middle_name ? $middle_name . ' ' : '') . $last_name);
+            $email_result = sendWelcomeEmail($email, $full_name, $patient_id, $password);
+
+            if ($email_result['success']) {
+                $success = "Patient created! Email sent to: " . $email;
+            } else {
+                $success = "Patient created! Email failed: " . $email_result['message'];
+            }
             ?>
             <script>
                 localStorage.removeItem('formData');
