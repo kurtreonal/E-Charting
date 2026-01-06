@@ -136,9 +136,6 @@ $con->close();
                         <label>Patient Status</label>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
-                                <input type="checkbox" checked value="all"> All
-                            </label>
-                            <label class="checkbox-label">
                                 <input type="checkbox" checked value="active"> Active
                             </label>
                             <label class="checkbox-label">
@@ -146,6 +143,9 @@ $con->close();
                             </label>
                             <label class="checkbox-label">
                                 <input type="checkbox" checked value="out-patient"> Out-Patient
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked value="deceased"> Deceased
                             </label>
                         </div>
                     </div>

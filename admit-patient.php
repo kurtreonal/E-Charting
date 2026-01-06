@@ -90,6 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
 
         if ($stmt->execute()) {
+            // Get the inserted admission ID
+            $admission_data_id = $con->insert_id;
+
             // Update patient status to in-patient
             $update_status_sql = "UPDATE patients SET patient_status = 'in-patient' WHERE patient_id = ?";
             $update_stmt = $con->prepare($update_status_sql);

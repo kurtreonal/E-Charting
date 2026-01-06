@@ -9,7 +9,7 @@ body {
     background-attachment: fixed;
     margin: 0;
     padding: 0;
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .wrapper {
@@ -37,7 +37,7 @@ body {
 }
 
 .header-content h1 {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
     margin: 0;
     font-size: 2.5rem;
@@ -45,7 +45,7 @@ body {
 }
 
 .section-subtitle {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
     font-size: 1.1rem;
     font-style: italic;
@@ -58,7 +58,7 @@ body {
 }
 
 .btn-add-patient button {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     padding: 8px 1.5rem;
     background-color: var(--secondary);
     border: 2px solid var(--primary);
@@ -122,7 +122,7 @@ body {
 }
 
 .metric-header h4 {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--primary);
@@ -142,7 +142,7 @@ body {
 }
 
 .metric-value .value {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 3rem;
     font-weight: 700;
     color: var(--primary);
@@ -150,7 +150,7 @@ body {
 }
 
 .metric-value .unit {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 1.2rem;
     color: var(--primary);
     font-weight: 500;
@@ -178,7 +178,7 @@ body {
 }
 
 .progress-label {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 0.95rem;
     color: var(--primary);
     font-style: italic;
@@ -221,7 +221,7 @@ body {
 }
 
 .chart-header h3 {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--primary);
@@ -245,6 +245,8 @@ body {
     opacity: 0;
     transform: translateY(20px);
     box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+    max-height: 600px;
+    overflow-y: auto;
 }
 
 .patient-list-section[data-animate="fade-up"] {
@@ -256,7 +258,7 @@ body {
 }
 
 .patient-list-header h3 {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--primary);
@@ -277,7 +279,7 @@ body {
 }
 
 .patient-list-table th {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--primary);
@@ -296,7 +298,7 @@ body {
 }
 
 .patient-list-table tr {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: italic;
     font-size: 20px;
     transition: background-color 0.2s ease;
@@ -389,7 +391,7 @@ body {
     transition: all 0.3s ease;
     border: none;
     cursor: pointer;
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .btn-primary {
@@ -458,7 +460,7 @@ body {
     background: none;
     border: none;
     color: var(--primary);
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -716,7 +718,7 @@ body {
 
 .filter-section h3,
 .quick-actions h3 {
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 1.3rem;
     font-weight: 700;
     margin-bottom: 1.5rem;
@@ -729,7 +731,7 @@ body {
 
 .filter-group label {
     display: block;
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: var(--primary);
@@ -742,7 +744,7 @@ body {
     border: 2px solid var(--primary);
     border-radius: 5px;
     font-size: 0.95rem;
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     transition: all 0.3s ease;
     background: #f1ebe5;
 }
@@ -764,7 +766,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 500;
     font-size: 0.95rem;
     color: var(--primary);
@@ -784,7 +786,7 @@ body {
     border: 2px solid var(--primary);
     padding: 0.875rem;
     border-radius: 5px;
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 600;
     font-size: 1rem;
     cursor: pointer;
@@ -813,7 +815,7 @@ body {
     border: 1px solid var(--primary);
     padding: 0.875rem;
     border-radius: 5px;
-    font-family: "Cormorant Garamond", serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 500;
     font-size: 0.95rem;
     cursor: pointer;
@@ -855,3 +857,4 @@ body {
         margin-bottom: 2rem;
     }
 }
+

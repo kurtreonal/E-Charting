@@ -7,7 +7,6 @@
     font-style: normal; /* Or specify a style if the font has multiple */
 }
 
-
 :root {
     --primary: #423f3e;
     --secondary: #f0ebe5;
@@ -44,6 +43,7 @@ body {
     text-align: center;
     margin-bottom: 2rem;
     text-decoration: underline;
+    padding-top: 1rem;
 }
 
 .header-section h3 {
@@ -85,7 +85,7 @@ body {
 }
 
 .side-form-section label {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
 }
 
@@ -113,7 +113,7 @@ body {
     border: none;
     background: transparent;
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: medium;
     color: var(--primary);
 }
@@ -175,7 +175,7 @@ body {
 }
 
 .datetime-wrapper label {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
     display: flex;
     align-items: center;
@@ -191,7 +191,7 @@ body {
 }
 
 .form-group, .section-title-patient-needs, .section-title-others, .section-title-radio-options {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
     font-weight: bold;
 }
@@ -219,7 +219,7 @@ body {
 }
 
 .label-row label {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
 }
 
@@ -243,7 +243,7 @@ body {
 }
 
 .radio-pair label {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
 }
 
@@ -256,7 +256,7 @@ body {
     height: 24px;
     border: none;
     border-bottom: 1px solid var(--primary);
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     padding: 0 0.5rem;
     padding-left: 2rem;
 }
@@ -275,7 +275,7 @@ body {
     border: none;
     border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     padding-left: 2rem;
 }
 .habits{
@@ -315,7 +315,7 @@ body {
     border: none;
     border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     padding-left: 2rem;
 }
 
@@ -347,7 +347,7 @@ body {
     border: none;
     border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-align: center;
 }
 
@@ -634,7 +634,7 @@ body {
     display: flex;
 }
 .fr {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--primary);
     font-weight: bold;
 }
@@ -657,7 +657,7 @@ body {
     border: none;
     border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-align: center;
 }
 
@@ -669,7 +669,7 @@ body {
     border: none;
     border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-align: center;
 }
 
@@ -932,7 +932,7 @@ td .checkbox-wrapper-52 {
     border: none;
     border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-align: center;
 }
 
@@ -950,7 +950,7 @@ td .checkbox-wrapper-52 {
     border: none;
     border-bottom: 1px solid var(--primary);
     padding: 0.5rem 0;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-align: center;
 }
 

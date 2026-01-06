@@ -21,7 +21,7 @@ include 'connection.php';
 <body>
     <?php include "nav.php"; ?>
 
-    <div class="main-content">
+    <div class="main-content" id="home">
         <img src="./Assets/img1.svg" alt="hospital image" class="main-image">
         <div class="content-overlay">
             <h1>The Mica Hospital</h1>
@@ -35,9 +35,9 @@ include 'connection.php';
         </div>
     </div>
 
-    <div class="services-section">
+    <div class="services-section" id="services">
         <div class="services-content">
-            <h2 class="section-title">OUR SERVICES</h2>
+            <h2 class="section-title">0UR SERVICES</h2>
             <div class="services-container">
                 <div class="service-card">
                     <h3 class="service-title">CLINICAL SERVICES</h3>
@@ -49,7 +49,7 @@ include 'connection.php';
                     </p>
                 </div>
                 <div class="service-card">
-                    <h3 class="service-title">DIAGNOSTICS</h3>
+                    <h3 class="service-title">DIAGN0STICS</h3>
                     <p class="service-description">
                         At Mica Hospital, our advanced diagnostic services help doctors detect
                         and understand health conditions with accuracy and speed.
@@ -62,9 +62,9 @@ include 'connection.php';
         </div>
     </div>
 
-    <div class="about-section">
+    <div class="about-section" id="about">
         <div class="about-content">
-            <h2 class="section-title">ABOUT US</h2>
+            <h2 class="section-title">AB0UT US</h2>
             <div class="about-container">
                 <div class="about-card">
                     <h3 class="about-title">VISIT US</h3>
@@ -74,7 +74,8 @@ include 'connection.php';
                     </p>
                 </div>
                 <div class="about-card">
-                    <h3 class="about-title">CONTACTS</h3>
+                    <h3 class="about-title">C0NTACTS</h3>
+                    <img src="./Assets/contacticon.svg" alt="contact icon">
                     <p class="about-description">
                         Phone: 0939-123-4567<br>
                         Email: micahospital@gmail.com

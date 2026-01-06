@@ -88,7 +88,7 @@ a {
 
 .login-container {
   color: var(--primary);
-  font-family: "Cormorant Garamond", serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--secondary);
   width: 100%;
   max-width: 400px;
@@ -101,7 +101,7 @@ h1 {
   color: var(--primary);
   margin-bottom: 50px;
   font-size: 40px;
-  font-family: "Cormorant Garamond", serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   text-align: center;
 }
 
@@ -426,3 +426,5 @@ button:hover {
     }
 
 }
+
+

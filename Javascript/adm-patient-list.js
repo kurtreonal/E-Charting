@@ -279,7 +279,7 @@ function showUndoNotification(patientId, oldStatus, newStatus) {
         padding: 1rem 1.5rem;
         border-radius: 8px;
         box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);
-        font-family: 'Cormorant Garamond', serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         font-weight: 600;
         z-index: 9999;
         display: flex;
@@ -298,7 +298,7 @@ function showUndoNotification(patientId, oldStatus, newStatus) {
             padding: 0.5rem 1rem;
             border-radius: 5px;
             cursor: pointer;
-            font-family: 'Cormorant Garamond', serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             font-weight: 600;
         ">
             <i class="fas fa-undo"></i> Undo
@@ -448,7 +448,7 @@ function showNotification(message, type = 'info') {
         padding: 1rem 1.5rem;
         border-radius: 8px;
         box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
-        font-family: 'Cormorant Garamond', serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         font-weight: 600;
         z-index: 9999;
         animation: slideInRight 0.4s ease;
@@ -724,3 +724,4 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
 // Console log for debugging
 console.log('Patient List page initialized successfully');
+

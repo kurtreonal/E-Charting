@@ -92,23 +92,38 @@ if (!function_exists('calculate_recovery_rate')) {
 
 if (!function_exists('calculate_readmission_rate')) {
     /**
-     * Calculate Readmission Rate
-     * Percentage of patients who were readmitted (have multiple admission records)
+     * Calculate Readmission Rate (30-Day Readmissions)
+     * Percentage of patients who were readmitted in the last 6 months
+     * Uses a ROLLING TIME WINDOW so the rate can decrease with improved care
+     *
+     * OLD METHOD (WRONG): Counted ALL patients with multiple admissions EVER
+     * - Problem: Rate could only increase, never decrease
+     * - Historical data never disappeared
+     *
+     * NEW METHOD (CORRECT): Only counts admissions in last 6 months
+     * - Rate can decrease when care improves
+     * - Measures recent performance only
      *
      * @param mysqli $con Database connection
      * @return int Percentage
      */
     function calculate_readmission_rate($con) {
-        // Count patients with multiple admissions
+        // 30-Day Readmission Rate over rolling 6-month window
+        // This measures recent performance and can decrease when care improves
+
         $sql = "
-            SELECT
-                COUNT(DISTINCT a.patient_id) as total_patients,
-                SUM(CASE WHEN admission_count > 1 THEN 1 ELSE 0 END) as readmitted_patients
-            FROM (
-                SELECT patient_id, COUNT(*) as admission_count
+            WITH patient_admissions AS (
+                SELECT
+                    patient_id,
+                    COUNT(*) as admission_count
                 FROM admission_data
+                WHERE admission_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
                 GROUP BY patient_id
-            ) a
+            )
+            SELECT
+                COUNT(*) as total_patients,
+                SUM(CASE WHEN admission_count > 1 THEN 1 ELSE 0 END) as readmitted_patients
+            FROM patient_admissions
         ";
 
         $result = $con->query($sql);

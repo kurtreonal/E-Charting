@@ -147,7 +147,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
             margin: 0 0 10px 0;
             color: #0c5460;
             font-size: 16px;
-            font-family: "Cormorant Garamond", serif;
         }
         .info-box p {
             margin: 5px 0;
@@ -255,3 +254,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
     </div>
 </body>
 </html>
+

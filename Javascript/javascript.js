@@ -1,3 +1,31 @@
+// Smooth scroll to sections on landing page
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('a[data-section]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            const sectionId = link.getAttribute('data-section');
+            const section = document.getElementById(sectionId);
+            
+            if (section) {
+                e.preventDefault();
+                
+                // Smooth scroll to the section
+                section.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+                
+                // Close hamburger menu if open (mobile)
+                const hamburger = document.querySelector('.hamburger');
+                const navLinks = document.querySelector('.nav-links');
+                if (hamburger && navLinks) {
+                    hamburger.classList.remove('active');
+                    navLinks.classList.remove('active');
+                }
+            }
+        });
+    });
+});
+
 //humburger function
 document.addEventListener('DOMContentLoaded', () => {
     const hamburger = document.querySelector('.hamburger');
@@ -164,3 +192,5 @@ function clearFormData() {
     localStorage.removeItem('formData');
     console.log('Form data cleared from localStorage');
 }
+
+

@@ -6,16 +6,78 @@ include_once 'includes/notification.php';
 include_once 'includes/activity-logger.php';
 $nurse_id = isset($_SESSION['nurse_id']) ? $_SESSION['nurse_id'] : null;
 
+// Get filter parameters
+$date_range = isset($_GET['date_range']) ? $_GET['date_range'] : '30';
+$instructed_filter = isset($_GET['instructed']) ? $_GET['instructed'] : '';
+$status_filter = isset($_GET['statuses']) ? explode(',', $_GET['statuses']) : [];
 
-// Fetch patients for the patient list section
+// Fetch UNIQUE patients with filtering
 $sql = "
-    SELECT usr.first_name, usr.middle_name, usr.last_name, p.patient_id, p.patient_status
+    SELECT DISTINCT usr.first_name, usr.middle_name, usr.last_name, p.patient_id, p.patient_status
     FROM patients p
     LEFT JOIN users usr ON p.user_id = usr.user_id
-    ORDER BY usr.first_name ASC
+    WHERE 1=1
 ";
 
-$result = $con->query($sql);
+$conditions = [];
+$params = [];
+$param_types = '';
+
+// Date range filter
+if ($date_range !== 'all' && !empty($date_range)) {
+    $days = (int)$date_range;
+    $conditions[] = "p.patient_id IN (
+        SELECT DISTINCT patient_id
+        FROM admission_data
+        WHERE admission_date >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+    )";
+}
+
+// Instructed filter
+if (!empty($instructed_filter)) {
+    $conditions[] = "p.patient_id IN (
+        SELECT DISTINCT patient_id
+        FROM admission_data
+        WHERE instructed = ?
+    )";
+    $params[] = $instructed_filter;
+    $param_types .= 's';
+}
+
+// Patient status filter
+if (!empty($status_filter)) {
+    $status_placeholders = [];
+    foreach ($status_filter as $status) {
+        $db_status = trim($status);
+        if (in_array($db_status, ['active', 'in-patient', 'out-patient', 'deceased'])) {
+            $status_placeholders[] = '?';
+            $params[] = $db_status;
+            $param_types .= 's';
+        }
+    }
+
+    if (!empty($status_placeholders)) {
+        $conditions[] = "p.patient_status IN (" . implode(',', $status_placeholders) . ")";
+    }
+}
+
+if (!empty($conditions)) {
+    $sql .= " AND " . implode(" AND ", $conditions);
+}
+
+$sql .= " ORDER BY usr.first_name ASC";
+
+// Execute query
+if (!empty($params)) {
+    $stmt = $con->prepare($sql);
+    $stmt->bind_param($param_types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+} else {
+    $result = $con->query($sql);
+}
+
 $patients = [];
 
 if ($result && $result->num_rows > 0) {
@@ -50,6 +112,83 @@ $confirmed_med_notifs_result = $con->query("SELECT COUNT(*) as count FROM notifi
 $confirmed_med_notifs = $confirmed_med_notifs_result ? $confirmed_med_notifs_result->fetch_assoc()['count'] : 0;
 
 $medication_adherence = $total_med_notifs > 0 ? round(($confirmed_med_notifs / $total_med_notifs) * 100) : 0;
+
+// ============================================
+// CHART DATA: Patient Admissions Trend (Last 12 Months)
+// ============================================
+$admission_trend_sql = "
+    SELECT
+        DATE_FORMAT(admission_date, '%Y-%m') as month,
+        DATE_FORMAT(admission_date, '%b %Y') as month_label,
+        COUNT(*) as admission_count
+    FROM admission_data
+    WHERE admission_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+    GROUP BY DATE_FORMAT(admission_date, '%Y-%m'), DATE_FORMAT(admission_date, '%b %Y')
+    ORDER BY month ASC
+";
+
+$admission_trend_result = $con->query($admission_trend_sql);
+$admission_months = [];
+$admission_counts = [];
+
+if ($admission_trend_result && $admission_trend_result->num_rows > 0) {
+    while ($row = $admission_trend_result->fetch_assoc()) {
+        $admission_months[] = $row['month_label'];
+        $admission_counts[] = (int)$row['admission_count'];
+    }
+} else {
+    // If no data, show last 6 months with zeros
+    for ($i = 5; $i >= 0; $i--) {
+        $date = date('M Y', strtotime("-$i months"));
+        $admission_months[] = $date;
+        $admission_counts[] = 0;
+    }
+}
+
+// ============================================
+// CHART DATA: Patient Status Distribution
+// ============================================
+$status_distribution_sql = "
+    SELECT
+        patient_status,
+        COUNT(*) as count
+    FROM patients
+    GROUP BY patient_status
+    ORDER BY
+        CASE patient_status
+            WHEN 'active' THEN 1
+            WHEN 'in-patient' THEN 2
+            WHEN 'out-patient' THEN 3
+            WHEN 'deceased' THEN 4
+            ELSE 5
+        END
+";
+
+$status_distribution_result = $con->query($status_distribution_sql);
+$status_labels = [];
+$status_counts = [];
+$status_colors = [];
+
+// Define colors for each status
+$color_map = [
+    'active' => '#28a745',
+    'in-patient' => '#17a2b8',
+    'out-patient' => '#ffc107',
+    'deceased' => '#dc3545'
+];
+
+if ($status_distribution_result && $status_distribution_result->num_rows > 0) {
+    while ($row = $status_distribution_result->fetch_assoc()) {
+        $status = ucwords(str_replace('-', ' ', $row['patient_status']));
+        $status_labels[] = $status;
+        $status_counts[] = (int)$row['count'];
+        $status_colors[] = $color_map[$row['patient_status']] ?? '#6c757d';
+    }
+} else {
+    $status_labels = ['Active', 'In-Patient', 'Out-Patient', 'Deceased'];
+    $status_counts = [0, 0, 0, 0];
+    $status_colors = ['#28a745', '#17a2b8', '#ffc107', '#dc3545'];
+}
 
 // Fetch notifications for the current nurse using the helper function
 $notifications = fetch_notifications_for_nurse($con, $nurse_id, null, 50);
@@ -101,67 +240,67 @@ $con->close();
     <div class="wrapper">
         <div class="dashboard-container">
         <!-- Sidebar Filters -->
-        <aside class="sidebar">
-            <div class="filter-section">
-                <h3>Filters</h3>
+            <aside class="sidebar">
+                <div class="filter-section">
+                    <h3>Filters</h3>
 
-                <div class="filter-group">
-                    <label>Date Range</label>
-                    <select class="filter-select">
-                        <option>Last 7 Days</option>
-                        <option selected>Last 30 Days</option>
-                        <option>Last 3 Months</option>
-                        <option>Last 6 Months</option>
-                        <option>Last Year</option>
-                        <option>Custom Range</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label>Patient Status</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" checked> All
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" checked> Active
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" checked> In-Patient
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" checked> Out-Patient
-                        </label>
+                    <div class="filter-group">
+                        <label>Date Range</label>
+                        <select class="filter-select" id="dateRangeFilter">
+                            <option value="7" <?php echo $date_range == '7' ? 'selected' : ''; ?>>Last 7 Days</option>
+                            <option value="30" <?php echo $date_range == '30' ? 'selected' : ''; ?>>Last 30 Days</option>
+                            <option value="90" <?php echo $date_range == '90' ? 'selected' : ''; ?>>Last 3 Months</option>
+                            <option value="180" <?php echo $date_range == '180' ? 'selected' : ''; ?>>Last 6 Months</option>
+                            <option value="365" <?php echo $date_range == '365' ? 'selected' : ''; ?>>Last Year</option>
+                            <option value="all" <?php echo $date_range == 'all' ? 'selected' : ''; ?>>All Time</option>
+                        </select>
                     </div>
+
+                    <div class="filter-group">
+                        <label>Patient Status</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked value="active"> Active
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked value="in-patient"> In-Patient
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked value="out-patient"> Out-Patient
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" checked value="deceased"> Deceased
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Patient Instructed</label>
+                        <select class="filter-select" id="instructedFilter">
+                            <option value="" <?php echo $instructed_filter == '' ? 'selected' : ''; ?>>All Instructions</option>
+                            <option value="wardset" <?php echo $instructed_filter == 'wardset' ? 'selected' : ''; ?>>Ward Set</option>
+                            <option value="medication" <?php echo $instructed_filter == 'medication' ? 'selected' : ''; ?>>Medication</option>
+                            <option value="hospital-rules" <?php echo $instructed_filter == 'hospital-rules' ? 'selected' : ''; ?>>Hospital Rules</option>
+                            <option value="special" <?php echo $instructed_filter == 'special' ? 'selected' : ''; ?>>Special Procedure</option>
+                        </select>
+                    </div>
+
+                    <button class="apply-filters-btn" onclick="applyFiltersAndRedirect()">Apply Filters</button>
                 </div>
 
-                <div class="filter-group">
-                    <label>Patient Instructions</label>
-                    <select class="filter-select">
-                        <option>All Departments</option>
-                        <option>Emergency</option>
-                        <option>ICU</option>
-                        <option>General Ward</option>
-                        <option>Pediatrics</option>
-                    </select>
+                <div class="quick-actions">
+                    <h3>Quick Actions</h3>
+                    <button class="action-btn" onclick="window.location.href='add-patient.php'">
+                        <i class="fas fa-user-plus"></i> Add New Patient
+                    </button>
+                    <button class="action-btn">
+                        <i class="fas fa-file-pdf"></i> Generate PDF Report
+                    </button>
+                    <button class="action-btn">
+                        <i class="fas fa-file-excel"></i> Export to Excel
+                    </button>
                 </div>
-
-                <button class="apply-filters-btn">Apply Filters</button>
-            </div>
-
-            <div class="quick-actions">
-                <h3>Quick Actions</h3>
-                <button class="action-btn">
-                    <i class="fas fa-file-pdf"></i> Generate PDF Report
-                </button>
-                <button class="action-btn">
-                    <i class="fas fa-file-excel"></i> Export to Excel
-                </button>
-                <button class="action-btn">
-                    <i class="fas fa-chart-line"></i> Custom Analytics
-                </button>
-            </div>
-        </aside>
+            </aside>
 
         <!-- Main Dashboard Content -->
         <main class="dashboard-content">
@@ -170,9 +309,6 @@ $con->close();
             <div class="dashboard-nav-tabs">
                 <button class="dashboard-tab active" data-section="overview">
                     <i class="fas fa-chart-pie"></i> Overview
-                </button>
-                <button class="dashboard-tab" data-section="performance">
-                    <i class="fas fa-trophy"></i> Performance
                 </button>
                 <button class="dashboard-tab" data-section="reports">
                     <i class="fas fa-file-alt"></i> Reports
@@ -229,20 +365,6 @@ $con->close();
                             </div>
                         </div>
                     </div>
-
-                    <div class="kpi-card" data-animate="fade-up" style="animation-delay: 0.3s">
-                        <div class="kpi-icon adherence">
-                            <i class="fas fa-pills"></i>
-                        </div>
-                        <div class="kpi-content">
-                            <h3 class="kpi-value" data-count="<?php echo $medication_adherence; ?>">0</h3>
-                            <p class="kpi-label">Medication Adherence %</p>
-                            <div class="kpi-trend <?php echo $medication_adherence >= 90 ? 'positive' : ($medication_adherence >= 75 ? 'neutral' : 'negative'); ?>">
-                                <i class="fas fa-<?php echo $medication_adherence >= 90 ? 'arrow-up' : ($medication_adherence >= 75 ? 'minus' : 'arrow-down'); ?>"></i>
-                                <span><?php echo $medication_adherence >= 90 ? 'Excellent' : ($medication_adherence >= 75 ? 'Good' : 'Needs attention'); ?></span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Charts Row 1 -->
@@ -251,9 +373,20 @@ $con->close();
                         <div class="chart-header">
                             <h3>Patient Admissions Trend</h3>
                             <div class="chart-actions">
-                                <button class="chart-action-btn">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
+                                <div class="dropdown">
+                                    <button class="chart-action-btn dropdown-toggle" data-chart="admissions">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu" id="admissionsMenu">
+                                        <button class="dropdown-item" data-period="6">Last 6 Months</button>
+                                        <button class="dropdown-item active" data-period="12">Last 12 Months</button>
+                                        <button class="dropdown-item" data-period="24">Last 2 Years</button>
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item" data-action="export">
+                                            <i class="fas fa-download"></i> Export Data
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="chart-container">
@@ -265,9 +398,31 @@ $con->close();
                         <div class="chart-header">
                             <h3>Patient Status Distribution</h3>
                             <div class="chart-actions">
-                                <button class="chart-action-btn">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
+                                <div class="dropdown">
+                                    <button class="chart-action-btn dropdown-toggle" data-chart="status">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu" id="statusMenu">
+                                        <div class="filter-options">
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" checked data-status="active"> Active
+                                            </label>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" checked data-status="in-patient"> In-Patient
+                                            </label>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" checked data-status="out-patient"> Out-Patient
+                                            </label>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" checked data-status="deceased"> Deceased
+                                            </label>
+                                        </div>
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item" data-action="export">
+                                            <i class="fas fa-download"></i> Export Data
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="chart-container">
@@ -275,163 +430,7 @@ $con->close();
                         </div>
                     </div>
                 </div>
-
-                <!-- Charts Row 2 -->
-                <div class="charts-row">
-                    <div class="chart-card full-width" data-animate="fade-up">
-                        <div class="chart-header">
-                            <h3>Medication Adherence Over Time</h3>
-                            <div class="chart-legend">
-                                <span class="legend-item">
-                                    <span class="legend-color" style="background: #4CAF50;"></span>
-                                    On Time
-                                </span>
-                                <span class="legend-item">
-                                    <span class="legend-color" style="background: #FFC107;"></span>
-                                    Delayed
-                                </span>
-                                <span class="legend-item">
-                                    <span class="legend-color" style="background: #f44336;"></span>
-                                    Missed
-                                </span>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="medicationChart"></canvas>
-                        </div>
-                    </div>
-                </div>
             </section>
-
-            <!-- Performance Section -->
-            <section id="performance" class="dashboard-section" style="display: none;">
-                <div class="section-header">
-                    <h2>Nursing Performance Metrics</h2>
-                    <p class="section-subtitle">Individual and team performance analytics</p>
-                </div>
-
-                <!-- Nurse Performance Cards -->
-                <div class="performance-grid">
-                    <div class="performance-card" data-animate="fade-up">
-                        <div class="performance-header">
-                            <div class="nurse-avatar">
-                                <i class="fas fa-user-nurse"></i>
-                            </div>
-                            <div class="nurse-info">
-                                <h4>Nurse Maria Santos</h4>
-                                <p>Senior Nurse - Ward A</p>
-                            </div>
-                        </div>
-                        <div class="performance-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">Patients Cared</span>
-                                <span class="stat-value">45</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Appointments</span>
-                                <span class="stat-value">32</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Avg Response Time</span>
-                                <span class="stat-value">8 min</span>
-                            </div>
-                        </div>
-                        <div class="performance-badge excellent">
-                            <i class="fas fa-trophy"></i> Top Performer
-                        </div>
-                    </div>
-
-                    <div class="performance-card" data-animate="fade-up" style="animation-delay: 0.1s">
-                        <div class="performance-header">
-                            <div class="nurse-avatar">
-                                <i class="fas fa-user-nurse"></i>
-                            </div>
-                            <div class="nurse-info">
-                                <h4>Nurse John Reyes</h4>
-                                <p>Staff Nurse - Ward B</p>
-                            </div>
-                        </div>
-                        <div class="performance-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">Patients Cared</span>
-                                <span class="stat-value">38</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Appointments</span>
-                                <span class="stat-value">28</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Avg Response Time</span>
-                                <span class="stat-value">10 min</span>
-                            </div>
-                        </div>
-                        <div class="performance-badge good">
-                            <i class="fas fa-star"></i> Excellent
-                        </div>
-                    </div>
-
-                    <div class="performance-card" data-animate="fade-up" style="animation-delay: 0.2s">
-                        <div class="performance-header">
-                            <div class="nurse-avatar">
-                                <i class="fas fa-user-nurse"></i>
-                            </div>
-                            <div class="nurse-info">
-                                <h4>Nurse Ana Cruz</h4>
-                                <p>Staff Nurse - ICU</p>
-                            </div>
-                        </div>
-                        <div class="performance-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">Patients Cared</span>
-                                <span class="stat-value">29</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Appointments</span>
-                                <span class="stat-value">24</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Avg Response Time</span>
-                                <span class="stat-value">6 min</span>
-                            </div>
-                        </div>
-                        <div class="performance-badge excellent">
-                            <i class="fas fa-trophy"></i> Top Performer
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Team Performance Chart -->
-                <div class="chart-card full-width" data-animate="fade-up">
-                    <div class="chart-header">
-                        <h3>Team Performance Comparison</h3>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="teamPerformanceChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Activity Metrics -->
-                <div class="charts-row">
-                    <div class="chart-card" data-animate="fade-up">
-                        <div class="chart-header">
-                            <h3>Daily Activity Log</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="activityChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="chart-card" data-animate="fade-up" style="animation-delay: 0.1s">
-                        <div class="chart-header">
-                            <h3>Response Time Trends</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="responseTimeChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <!-- Reports Section -->
             <section id="reports" class="dashboard-section" style="display: none;">
                 <div class="section-header">
@@ -552,7 +551,53 @@ $con->close();
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
+    <!-- Pass PHP data to JavaScript -->
+    <script>
+        // Admission Trend Data
+        const admissionMonths = <?php echo json_encode($admission_months); ?>;
+        const admissionCounts = <?php echo json_encode($admission_counts); ?>;
+
+        // Status Distribution Data
+        const statusLabels = <?php echo json_encode($status_labels); ?>;
+        const statusCounts = <?php echo json_encode($status_counts); ?>;
+        const statusColors = <?php echo json_encode($status_colors); ?>;
+    </script>
+
     <!-- Analytics Dashboard Script - Load AFTER notification system from adm-nav.php -->
     <script src="./Javascript/analytics-dashboard.js"></script>
+
+    <!-- Filter Redirect Function -->
+    <script>
+        function applyFiltersAndRedirect() {
+            // Get filter values
+            const dateRange = document.getElementById('dateRangeFilter').value;
+            const instructed = document.getElementById('instructedFilter').value;
+
+            // Get status filters
+            const statusCheckboxes = document.querySelectorAll('.checkbox-label input[type="checkbox"]:checked');
+            const statuses = [];
+
+            statusCheckboxes.forEach(checkbox => {
+                const value = checkbox.getAttribute('value');
+                if (value && value !== 'all') {
+                    statuses.push(value);
+                }
+            });
+
+            // Build URL
+            let url = 'adm-patient-list.php?date_range=' + encodeURIComponent(dateRange);
+
+            if (instructed) {
+                url += '&instructed=' + encodeURIComponent(instructed);
+            }
+
+            if (statuses.length > 0) {
+                url += '&statuses=' + encodeURIComponent(statuses.join(','));
+            }
+
+            // Redirect to patient list with filters
+            window.location.href = url;
+        }
+    </script>
 </body>
 </html>
