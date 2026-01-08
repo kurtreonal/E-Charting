@@ -1534,12 +1534,12 @@ function isChecked($field, $value) {
             <br>
 
             <div class="header-section">
-                <h3>PATIENT MEDICATION</h3>
+                <h3>DOCTOR'S ORDER - MEDICATIONS</h3>
             </div>
                 <div class="medication-wrapper">
                     <div class="medication-input-wrapper">
                         <div class="form-group">
-                            <label for="date_prescribed">Date:</label>
+                            <label for="date_prescribed">Prescribed Date:</label>
                             <input class="signature-input-adm" type="datetime-local" id="date_prescribed" name="date_prescribed" value="<?php echo getFormValue('date_prescribed', ''); ?>" >
                         </div>
                         <div class="form-group">
@@ -1561,7 +1561,7 @@ function isChecked($field, $value) {
                             <span>|</span>
                             <label for="interval_minutes">Every:</label>
                             <input type="number" id="interval_minutes" name="interval_minutes" placeholder="every X minutes" class="frequency-input" value="<?php echo getFormValue('interval_minutes', ''); ?>" >
-                            <label for="start_datetime">Start (optional):</label>
+                            <label for="start_datetime">When to Start (optional):</label>
                             <input type="datetime-local" id="start_datetime" name="start_datetime" class="frequency-input" value="<?php echo getFormValue('start_datetime', ''); ?>" >
                         </div>
                         <div class="form-group">

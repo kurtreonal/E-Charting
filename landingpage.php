@@ -62,7 +62,7 @@ include 'connection.php';
         </div>
     </div>
 
-    <div class="about-section" id="about">
+    <div class="about-section" id="contacts">
         <div class="about-content">
             <h2 class="section-title">AB0UT US</h2>
             <div class="about-container">

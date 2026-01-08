@@ -392,4 +392,154 @@ SECURITY TIPS:
 TEXT;
 }
 
+/**
+ * Send Welcome Email to New Patient
+ *
+ * @param string $to_email Patient's email address
+ * @param string $patient_name Patient's full name
+ * @param string $patient_id Patient ID
+ * @param string $password Patient's temporary password
+ * @return array ['success' => bool, 'message' => string]
+ */
+function sendWelcomeEmail($to_email, $patient_name, $patient_id, $password) {
+    $mail = new PHPMailer(true);
+
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host       = MAIL_HOST;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = MAIL_USERNAME;
+        $mail->Password   = MAIL_PASSWORD;
+        $mail->SMTPSecure = MAIL_ENCRYPTION;
+        $mail->Port       = MAIL_PORT;
+        $mail->SMTPDebug  = MAIL_DEBUG;
+
+        // Recipients
+        $mail->setFrom(MAIL_FROM, MAIL_FROM_NAME);
+        $mail->addAddress($to_email, $patient_name);
+        $mail->addReplyTo(MAIL_REPLY_TO, MAIL_REPLY_TO_NAME);
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Welcome to ' . HOSPITAL_NAME . ' - Your Patient Portal Account';
+        $mail->Body    = getWelcomeEmailTemplate($patient_name, $patient_id, $password, $to_email);
+        $mail->AltBody = getWelcomeEmailPlainText($patient_name, $patient_id, $password, $to_email);
+
+        $mail->send();
+        return ['success' => true, 'message' => 'Welcome email sent successfully'];
+
+    } catch (Exception $e) {
+        error_log("Welcome email sending failed: " . $mail->ErrorInfo);
+        return ['success' => false, 'message' => "Email could not be sent. Error: {$mail->ErrorInfo}"];
+    }
+}
+
+/**
+ * Get Welcome Email HTML Template
+ */
+function getWelcomeEmailTemplate($patient_name, $patient_id, $password, $email) {
+    $hospital_name = HOSPITAL_NAME ?? 'E-Charting Hospital';
+    $login_url = 'http://' . $_SERVER['HTTP_HOST'] . '/E-Charting/login.php';
+
+    return <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #423f3e; color: white; padding: 20px; text-align: center; border-radius: 4px 4px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 0 0 4px 4px; }
+        .credentials { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 20px 0; }
+        .button { background-color: #423f3e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 20px 0; }
+        .footer { font-size: 12px; color: #666; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to {$hospital_name}</h1>
+        </div>
+        <div class="content">
+            <p>Dear {$patient_name},</p>
+
+            <p>Welcome to {$hospital_name}! Your patient account has been successfully created. You can now access your medical records and appointment information through our patient portal.</p>
+
+            <div class="credentials">
+                <h3>Your Login Credentials</h3>
+                <p><strong>Email:</strong> {$email}</p>
+                <p><strong>Temporary Password:</strong> {$password}</p>
+                <p><strong>Patient ID:</strong> {$patient_id}</p>
+            </div>
+
+            <p>To access your account:</p>
+            <a href="{$login_url}" class="button">Login to Patient Portal</a>
+
+            <p><strong>Important:</strong> Please change your password immediately after logging in for security reasons.</p>
+
+            <h3>What You Can Do:</h3>
+            <ul>
+                <li>View your medical records and history</li>
+                <li>Check upcoming appointments</li>
+                <li>Review lab results</li>
+                <li>Update your personal information</li>
+                <li>Receive important health notifications</li>
+            </ul>
+
+            <p>If you have any questions or need assistance, please contact our support team.</p>
+
+            <p>Best regards,<br>{$hospital_name} Administration</p>
+        </div>
+        <div class="footer">
+            <p>&copy; {$hospital_name}. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply directly to this message.</p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}
+
+/**
+ * Get Welcome Email Plain Text Template
+ */
+function getWelcomeEmailPlainText($patient_name, $patient_id, $password, $email) {
+    $hospital_name = HOSPITAL_NAME ?? 'E-Charting Hospital';
+    $login_url = 'http://' . $_SERVER['HTTP_HOST'] . '/E-Charting/login.php';
+
+    return <<<TEXT
+Welcome to {$hospital_name}
+
+Dear {$patient_name},
+
+Welcome to {$hospital_name}! Your patient account has been successfully created. You can now access your medical records and appointment information through our patient portal.
+
+YOUR LOGIN CREDENTIALS:
+Email: {$email}
+Temporary Password: {$password}
+Patient ID: {$patient_id}
+
+To access your account, visit: {$login_url}
+
+IMPORTANT: Please change your password immediately after logging in for security reasons.
+
+WHAT YOU CAN DO:
+- View your medical records and history
+- Check upcoming appointments
+- Review lab results
+- Update your personal information
+- Receive important health notifications
+
+If you have any questions or need assistance, please contact our support team.
+
+Best regards,
+{$hospital_name} Administration
+
+---
+© {$hospital_name}. All rights reserved.
+This is an automated email. Please do not reply directly to this message.
+TEXT;
+}
+
 ?>

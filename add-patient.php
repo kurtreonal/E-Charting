@@ -1325,7 +1325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
             <br>
 
             <div class="header-section">
-                <h3>PATIENT MEDICATION</h3>
+                <h3>DOCTOR'S ORDER</h3>
             </div>
 
             <div class="add-patient-form">
@@ -1333,7 +1333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                     <div class="medication-wrapper">
                         <div class="medication-input-wrapper">
                             <div class="form-group">
-                                <label for="date_prescribed">Date:</label>
+                                <label for="date_prescribed">Date Prescribed:</label>
                                 <input class="signature-input-adm" type="datetime-local" id="date_prescribed" name="date_prescribed" value="">
                             </div>
                             <div class="form-group">
@@ -1355,7 +1355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_patient'])) {
                                 <span>|</span>
                                 <label for="frequency">Every:</label>
                                 <input type="number" id="frequency" name="interval_minutes" placeholder="every X minutes" class="frequency-input">
-                                <label for="start_datetime">Start (optional):</label>
+                                <label for="start_datetime">When to start (optional):</label>
                                 <input type="datetime-local" id="start_datetime" name="start_datetime" class="frequency-input">
                             </div>
                             <div class="form-group">

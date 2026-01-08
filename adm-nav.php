@@ -86,7 +86,7 @@
     <nav class="navbar">
         <a href="./adm-patient-list.php" class="nav-logo-link">
             <div class="nav-logo">
-                <img src="./Assets/logo.svg" alt="Hospital Logo" class="logo">
+                <img src="./Assets/logo.png" alt="Hospital Logo" class="logo">
             </div>
         </a>
 

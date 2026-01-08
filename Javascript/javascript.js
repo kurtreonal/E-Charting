@@ -4,16 +4,16 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => {
             const sectionId = link.getAttribute('data-section');
             const section = document.getElementById(sectionId);
-            
+
             if (section) {
                 e.preventDefault();
-                
+
                 // Smooth scroll to the section
                 section.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'
                 });
-                
+
                 // Close hamburger menu if open (mobile)
                 const hamburger = document.querySelector('.hamburger');
                 const navLinks = document.querySelector('.nav-links');
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check if there's a patient ID in the URL - if so, we're updating (don't load localStorage)
         const urlParams = new URLSearchParams(window.location.search);
         const patientId = urlParams.get('id');
-        
+
         if (!patientId) {
             // Only load localStorage on add-patient page (no ID in URL)
             loadFormData();

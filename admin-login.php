@@ -53,7 +53,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
   <div class="wrapper">
     <div class="container">
       <div class="logo-container">
-        <img src="./Assets/logo.svg" alt="Hospital Logo" class="logo">
+        <img src="./Assets/logo.png" alt="Hospital Logo" class="logo">
       </div>
 
       <div class="mica-container">

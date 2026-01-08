@@ -20,7 +20,7 @@ $patient_id = $is_logged_in ? (int)$_SESSION['patient_id'] : null;
     <nav class="navbar">
         <a href="./landingpage.php">
             <div class="nav-logo">
-                <img src="./Assets/logo.svg" alt="Hospital Logo" class="logo">
+                <img src="./Assets/logo.png" alt="Hospital Logo" class="logo">
             </div>
         </a>
 
@@ -31,10 +31,9 @@ $patient_id = $is_logged_in ? (int)$_SESSION['patient_id'] : null;
         </div>
 
         <div class="nav-links">
-            <a href="./landingpage.php" class="nav-item">Home</a>
-            <a href="#" class="nav-item">Services</a>
-            <a href="#" class="nav-item">About Us</a>
-            <a href="#" class="nav-item">Contact Us</a>
+            <a href="./landingpage.php" class="nav-item" data-section="home">Home</a>
+            <a href="./landingpage.php#services" class="nav-item" data-section="services">Services</a>
+            <a href="./landingpage.php#contacts" class="nav-item" data-section="contacts">Contact Us</a>
 
             <?php if ($is_logged_in): ?>
                 <a href="./patient-profile.php" class="nav-item">Profile</a>

@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
 
 body {
-    background-image: url("../Assets/bg1.png");
+    background-image: url("../Assets/bg2.png");
     background-size: cover;
     background-repeat: no-repeat;
     background-position-x: 15%;
@@ -25,9 +25,6 @@ body {
     width: 100%;
 }
 
-/* ========================================
-   HEADER
-   ======================================== */
 .admission-header {
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;

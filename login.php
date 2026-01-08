@@ -76,7 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["submit"])) {
             <!-- Logo and hospital name section -->
             <div class="header-section">
                 <div class="logo-container">
-                    <img src="./Assets/logo.svg" alt="Hospital Logo" class="logo">
+                    <img src="./Assets/logoP.png" alt="Hospital Logo" class="logo">
                 </div>
                 <div class="mica-container">
                     <p class="mica-desc">
