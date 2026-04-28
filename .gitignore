@@ -1,0 +1,86 @@
+# ========================================
+# ENVIRONMENT & CONFIGURATION
+# ========================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+
+# ========================================
+# IDE & EDITOR FILES
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.sublime-project
+.sublime-workspace
+*.sublime-workspace
+*.sublime-project
+
+# ========================================
+# LOGS & TEMPORARY FILES
+# ========================================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# ========================================
+# UPLOADS & MEDIA
+# ========================================
+uploads/lab_results/*
+!uploads/lab_results/.gitkeep
+
+# ========================================
+# COMPOSER
+# ========================================
+vendor/
+composer.lock
+
+# ========================================
+# PHP & SESSION FILES
+# ========================================
+*.php.bak
+*.php~
+session/
+sessions/
+
+# ========================================
+# SYSTEM FILES
+# ========================================
+.git/
+.gitkeep
+*.zip
+*.rar
+*.7z
+.DS_Store
+Thumbs.db
+
+# ========================================
+# BACKUPS & ARCHIVES
+# ========================================
+backups/
+*.sql
+*.sql.bak
+*.sql.gz
+*.backup
+
+# ========================================
+# NODE & BUILD TOOLS (if used later)
+# ========================================
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+
+# ========================================
+# DEBUGGING
+# ========================================
+debug.log
+debugger.php

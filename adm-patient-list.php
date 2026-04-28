@@ -653,7 +653,7 @@ $con->close();
     <div id="excelExportModal" class="report-modal" style="display: none;">
         <div class="report-modal-content">
             <div class="report-modal-header">
-                <h2>📊 Export Patient Data to Excel</h2>
+                <h2>Export Patient Data to Excel</h2>
                 <span class="report-modal-close" onclick="closeExcelModal()">&times;</span>
             </div>
             <div class="report-modal-body">

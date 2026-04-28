@@ -1,55 +1,56 @@
 <?php
 /**
  * Email Configuration for E-Charting System
- * Configure your email settings here
+ * Loads email settings from .env configuration file
+ * 
+ * NOTE: Do NOT hardcode credentials here.
+ * All sensitive information should be stored in .env file only.
  */
 
-// ========================================
-// SMTP SERVER SETTINGS
-// ========================================
-
-// For Gmail (Recommended for testing)
-define('MAIL_HOST', 'smtp.gmail.com');
-define('MAIL_PORT', 587);
-define('MAIL_ENCRYPTION', 'tls');  // 'tls' or 'ssl'
-
-// For Mailtrap (Best for development/testing - catches all emails)
-// define('MAIL_HOST', 'smtp.mailtrap.io');
-// define('MAIL_PORT', 2525);
-// define('MAIL_ENCRYPTION', 'tls');
+// Load configuration from .env file
+require_once dirname(__FILE__) . '/includes/config.php';
 
 // ========================================
-// AUTHENTICATION
+// SMTP SERVER SETTINGS (from .env)
 // ========================================
-
-// IMPORTANT: For Gmail, use App Password, NOT your regular password
-// See guide for how to generate App Password
-define('MAIL_USERNAME', 'shizukuosaka26@gmail.com');      // Your email address
-define('MAIL_PASSWORD', 'fjqtypzfejcuvwue');     // Gmail App Password (16 chars, no spaces)
+define('MAIL_HOST', Config::get('MAIL_HOST', 'smtp.gmail.com'));
+define('MAIL_PORT', (int)Config::get('MAIL_PORT', '587'));
+define('MAIL_ENCRYPTION', Config::get('MAIL_ENCRYPTION', 'tls'));
 
 // ========================================
-// FROM ADDRESS
+// AUTHENTICATION (from .env)
 // ========================================
-
-define('MAIL_FROM', 'shizukuosaka26@gmail.com');   // From email (can be same as MAIL_USERNAME)
-define('MAIL_FROM_NAME', 'Mica Hospital');        // Display name
+define('MAIL_USERNAME', Config::get('MAIL_USERNAME'));
+define('MAIL_PASSWORD', Config::get('MAIL_PASSWORD'));
 
 // ========================================
-// HOSPITAL INFORMATION
+// FROM ADDRESS (from .env)
 // ========================================
+define('MAIL_FROM', Config::get('MAIL_FROM'));
+define('MAIL_FROM_NAME', Config::get('MAIL_FROM_NAME', 'Mica Hospital'));
 
-define('HOSPITAL_NAME', 'Mica Hospital');
-define('HOSPITAL_ADDRESS', '123 Health St., Etivac City, HC 45678');
-define('HOSPITAL_PHONE', '0939-123-4567');
-define('HOSPITAL_EMAIL', 'shizukuosaka26@gmail.com');
-define('HOSPITAL_WEBSITE', 'http://localhost/E-Charting');
+// ========================================
+// HOSPITAL INFORMATION (from .env)
+// ========================================
+define('HOSPITAL_NAME', Config::get('HOSPITAL_NAME', 'Mica Hospital'));
+define('HOSPITAL_ADDRESS', Config::get('HOSPITAL_ADDRESS'));
+define('HOSPITAL_PHONE', Config::get('HOSPITAL_PHONE'));
+define('HOSPITAL_EMAIL', Config::get('HOSPITAL_EMAIL'));
+define('HOSPITAL_WEBSITE', Config::get('HOSPITAL_WEBSITE'));
 
 // ========================================
 // OPTIONAL SETTINGS
 // ========================================
+define('MAIL_REPLY_TO', Config::get('MAIL_FROM'));
+define('MAIL_REPLY_TO_NAME', Config::get('MAIL_FROM_NAME', 'Mica Hospital Support'));
+define('MAIL_DEBUG', 0);  // Set to 0 in production
 
-define('MAIL_REPLY_TO', 'shizukuosaka26@gmail.com'); // Reply-to email
-define('MAIL_REPLY_TO_NAME', 'Mica Hospital Support');
-define('MAIL_DEBUG', 0);  // 0 = off, 1 = client, 2 = server, 3 = connection, 4 = lowlevel
+// ========================================
+// VALIDATION
+// ========================================
+// Verify required email configuration
+if (!MAIL_USERNAME || !MAIL_PASSWORD) {
+    trigger_error('Email configuration incomplete. Check MAIL_USERNAME and MAIL_PASSWORD in .env file.', E_USER_WARNING);
+}
 
 ?>
