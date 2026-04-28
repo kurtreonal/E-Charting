@@ -2,7 +2,7 @@
 /**
  * Email Configuration for E-Charting System
  * Loads email settings from .env configuration file
- * 
+ *
  * NOTE: Do NOT hardcode credentials here.
  * All sensitive information should be stored in .env file only.
  */

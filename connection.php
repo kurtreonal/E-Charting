@@ -28,7 +28,7 @@ try {
 } catch (Exception $e) {
     // Log the error securely
     error_log("Database connection error: " . $e->getMessage());
-    
+
     // Display user-friendly error
     http_response_code(500);
     echo "<center><h1>SERVER ERROR</h1></center>";

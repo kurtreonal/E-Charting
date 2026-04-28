@@ -1,10 +1,10 @@
 <?php
 /**
  * Environment Configuration Verification Script
- * 
+ *
  * Use this to verify that .env file is properly configured
  * URL: http://localhost/E-Charting/verify-config.php
- * 
+ *
  * DELETE THIS FILE after verification in production!
  */
 
@@ -114,7 +114,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
         .pass .check-icon { color: #48bb78; }
         .fail .check-icon { color: #f56565; }
         .warning .check-icon { color: #ed8936; }
-        
+
         .summary {
             margin-top: 30px;
             padding: 20px;
@@ -171,19 +171,19 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
             <h1>🔐 E-Charting Configuration Verification</h1>
             <p>Verify that your .env file is properly configured</p>
         </div>
-        
+
         <div class="content">
             <?php
             require_once dirname(__FILE__) . '/includes/config.php';
-            
+
             $checks = [
                 'pass' => 0,
                 'fail' => 0,
                 'warning' => 0
             ];
-            
+
             $all_checks = [];
-            
+
             // Check 1: .env file exists
             $env_file = dirname(__FILE__) . '/.env';
             if (file_exists($env_file)) {
@@ -201,7 +201,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 ];
                 $checks['fail']++;
             }
-            
+
             // Check 2: .env file is readable
             if (file_exists($env_file) && is_readable($env_file)) {
                 $all_checks[] = [
@@ -218,7 +218,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 ];
                 $checks['fail']++;
             }
-            
+
             // Check 3: Database Host
             $db_host = Config::get('DB_HOST');
             if ($db_host) {
@@ -236,7 +236,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 ];
                 $checks['fail']++;
             }
-            
+
             // Check 4: Database User
             $db_user = Config::get('DB_USER');
             if ($db_user) {
@@ -254,7 +254,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 ];
                 $checks['warning']++;
             }
-            
+
             // Check 5: Database Password
             $db_pass = Config::get('DB_PASS');
             if ($db_pass !== '' && $db_pass !== null) {
@@ -272,7 +272,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 ];
                 $checks['warning']++;
             }
-            
+
             // Check 6: Database Name
             $db_name = Config::get('DB_NAME');
             if ($db_name) {
@@ -290,7 +290,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 ];
                 $checks['fail']++;
             }
-            
+
             // Check 7: Database Connection
             ?>
             <div class="section">
@@ -306,20 +306,20 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 }
                 ?>
             </div>
-            
+
             <?php
             // Check Database Connection
             $db_conn_check = 'fail';
             $db_conn_message = 'Not attempted';
-            
+
             try {
                 $test_host = Config::get('DB_HOST', 'localhost');
                 $test_user = Config::get('DB_USER', 'root');
                 $test_pass = Config::get('DB_PASS', '');
                 $test_name = Config::get('DB_NAME', 'e_charting');
-                
+
                 $test_con = new mysqli($test_host, $test_user, $test_pass, $test_name);
-                
+
                 if ($test_con->connect_error) {
                     $db_conn_check = 'fail';
                     $db_conn_message = 'Connection Failed: ' . $test_con->connect_error;
@@ -332,14 +332,14 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 $db_conn_check = 'fail';
                 $db_conn_message = 'Error: ' . $e->getMessage();
             }
-            
+
             if ($db_conn_check === 'pass') {
                 $checks['pass']++;
             } else {
                 $checks['fail']++;
             }
             ?>
-            
+
             <div class="section">
                 <h2><span class="status-icon">🗄️</span> Database Connection</h2>
                 <?php
@@ -351,34 +351,34 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 echo '</div>';
                 ?>
             </div>
-            
+
             <?php
             // Check Email Configuration
             $mail_user = Config::get('MAIL_USERNAME');
             $mail_pass = Config::get('MAIL_PASSWORD');
             $mail_host = Config::get('MAIL_HOST');
-            
+
             $email_checks = [];
-            
+
             if ($mail_user) {
                 $email_checks[] = ['pass', 'Email Username', $mail_user];
             } else {
                 $email_checks[] = ['fail', 'Email Username', 'Not configured'];
             }
-            
+
             if ($mail_pass) {
                 $email_checks[] = ['pass', 'Email Password', '(hidden for security)'];
             } else {
                 $email_checks[] = ['fail', 'Email Password', 'Not configured'];
             }
-            
+
             if ($mail_host) {
                 $email_checks[] = ['pass', 'Email Host', $mail_host];
             } else {
                 $email_checks[] = ['warning', 'Email Host', 'Not configured'];
             }
             ?>
-            
+
             <div class="section">
                 <h2><span class="status-icon">📧</span> Email Configuration</h2>
                 <?php
@@ -396,34 +396,34 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 }
                 ?>
             </div>
-            
+
             <?php
             // Check Hospital Information
             $hospital_checks = [];
-            
+
             $hospital_name = Config::get('HOSPITAL_NAME');
             $hospital_email = Config::get('HOSPITAL_EMAIL');
             $hospital_phone = Config::get('HOSPITAL_PHONE');
-            
+
             if ($hospital_name) {
                 $hospital_checks[] = ['pass', 'Hospital Name', $hospital_name];
             } else {
                 $hospital_checks[] = ['warning', 'Hospital Name', 'Not configured'];
             }
-            
+
             if ($hospital_email) {
                 $hospital_checks[] = ['pass', 'Hospital Email', $hospital_email];
             } else {
                 $hospital_checks[] = ['warning', 'Hospital Email', 'Not configured'];
             }
-            
+
             if ($hospital_phone) {
                 $hospital_checks[] = ['pass', 'Hospital Phone', $hospital_phone];
             } else {
                 $hospital_checks[] = ['warning', 'Hospital Phone', 'Not configured'];
             }
             ?>
-            
+
             <div class="section">
                 <h2><span class="status-icon">🏥</span> Hospital Information</h2>
                 <?php
@@ -440,13 +440,13 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 }
                 ?>
             </div>
-            
+
             <div class="summary">
                 <h3>Summary</h3>
                 <div class="summary-item">✓ Passed: <strong><?php echo $checks['pass']; ?></strong></div>
                 <div class="summary-item">✕ Failed: <strong><?php echo $checks['fail']; ?></strong></div>
                 <div class="summary-item">⚠ Warnings: <strong><?php echo $checks['warning']; ?></strong></div>
-                
+
                 <?php if ($checks['fail'] > 0): ?>
                     <div class="warning-box" style="margin-top: 20px;">
                         <strong>⚠️ Configuration Issues Detected</strong>
@@ -459,7 +459,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                     </div>
                 <?php endif; ?>
             </div>
-            
+
             <div class="warning-box">
                 <strong>⚠️ SECURITY REMINDER</strong>
                 <ul style="margin: 10px 0; padding-left: 20px;">
@@ -471,7 +471,7 @@ if (php_uname('s') !== 'Windows' && php_uname('s') !== 'Linux' && php_uname('s')
                 </ul>
             </div>
         </div>
-        
+
         <div class="footer">
             <strong>DELETE THIS FILE</strong> (verify-config.php) after verification in production environments
         </div>
