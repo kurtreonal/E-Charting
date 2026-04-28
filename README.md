@@ -15,13 +15,13 @@ The design emphasizes clarity, accessibility, and ease of use for medical staff,
 ## System Preview
 
 ### Home Interface Sample
-![image](./assets/home.png)
+![Home](./assets/home.png)
 
 ### Patient Profile Interface Sample
-![image](./assets/home.png)
+![PProfile](./assets/home.png)
 
 ### Patient Metrics Dashboard Sample
-![image](./assets/Admin-Dashboard.png)
+![Metrics](./assets/Admin-Dashboard.png)
 
 ---
 
