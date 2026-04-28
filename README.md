@@ -65,8 +65,6 @@ The system follows a basic web application structure:
 - Backend (PHP): Processes requests and manages logic
 - Database (MySQL): Stores patient records and system data
 
-[Inference] The architecture appears to follow a traditional client-server model commonly used in PHP-based systems.
-
 ---
 
 ## Database Overview
@@ -79,8 +77,6 @@ Typical data handled includes:
 - Status records
 - Health metrics
 - Activity logs
-
-[Inference] Exact schema is not fully documented in the repository. Consider adding a `.sql` file or ER diagram for clarity.
 
 ---
 
